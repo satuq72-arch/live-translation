@@ -1,0 +1,12 @@
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+
+export default async function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { userId } = auth();
+  if (!userId) redirect('/auth/sign-in');
+  return <main className="min-h-screen">{children}</main>;
+}
