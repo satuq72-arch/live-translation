@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd ../.. && turbo run build --filter=@saas/web",
-  "outputDirectory": "apps/web/.next",
-  "installCommand": "npm install"
+  "buildCommand": "next build",
+  "installCommand": "npm install",
+  "framework": "nextjs"
 }
