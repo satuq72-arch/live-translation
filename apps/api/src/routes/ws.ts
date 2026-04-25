@@ -37,14 +37,17 @@ const wsRoutes: FastifyPluginAsync = async (app) => {
         try { event = JSON.parse(msg.toString()); } catch { return; }
 
         if (event.type === 'start') {
-          // sessionId vom Frontend übernehmen
-          sessionId = event.sessionId ?? crypto.randomUUID();
+          if (!event.sessionId) {
+            socket.send(JSON.stringify({ type: 'error', code: 'DEEPGRAM_ERROR', message: 'Missing sessionId' } satisfies WSErrorEvent));
+            return;
+          }
+          sessionId = event.sessionId as string;
           tracker   = new UsageTracker(userId, sessionId);
-          sessionManager.add(userId, sessionId!, socket as any);
+          sessionManager.add(userId, sessionId, socket as any);
 
           try {
-            await handleAudio.start(userId, sessionId!, event, (result) => {
-              sessionManager.send(sessionId!, result);
+            await handleAudio.start(userId, sessionId, event, (result) => {
+              sessionManager.send(sessionId, result);
               if ((result as any).type === 'final') {
                 tracker!.tick(((result as any).duration ?? 0) / 60);
               }
