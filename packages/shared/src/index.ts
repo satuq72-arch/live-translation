@@ -19,9 +19,11 @@ export interface WSTranscriptEvent {
   timestamp: number;
 }
 
+export type WSErrorCode = 'DEEPGRAM_ERROR' | 'BILLING_LIMIT' | 'AUTH_ERROR';
+
 export interface WSErrorEvent {
   type: 'error';
-  code: string;
+  code: WSErrorCode;
   message: string;
 }
 
