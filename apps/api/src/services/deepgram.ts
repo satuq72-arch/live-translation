@@ -50,6 +50,10 @@ export const handleAudio = {
       onResult({ type: 'error', code: 'DEEPGRAM_ERROR', message: err.message });
     });
 
+    live.on(LiveTranscriptionEvents.Close, () => {
+      connections.delete(userId);
+    });
+
     connections.set(userId, live);
   },
 
