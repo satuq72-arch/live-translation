@@ -18,7 +18,7 @@ Make the existing live-translation monorepo a fully deployed, production-ready w
 |---|------|-----|-----|
 | 1 | `apps/api/src/routes/ws.ts` | `checkFreeTier` result never enforced | Close socket with code 4029 `BILLING_LIMIT` if `remaining <= 0` |
 | 2 | `apps/web/src/features/translation/hooks/useTranslation.ts` | MediaStream tracks never stopped — mic indicator stays active | Store stream in `streamRef`, call `.getTracks().forEach(t => t.stop())` in `stop()` |
-| 3 | `packages/core/src/ws-gateway/server.ts` | `remove(userId)` deletes all user sessions | Add `remove(userId, sessionId)` overload; key map by `sessionId` instead of `userId` |
+| 3 | `packages/core/src/ws-gateway/server.ts` | `remove(userId)` deletes all user sessions | Key map by `sessionId` instead of `userId`; update `send()` signature to `send(sessionId, data)`; `ws.ts` stores `sessionId` locally and uses it for all `sessionManager` calls |
 | 4 | `apps/web/src/features/translation/hooks/useTranslation.ts` | `ws.onMessage()` stacks handlers on every `start()` call | Register handler once in `useEffect`; remove on cleanup |
 | 5 | `apps/web/src/features/translation/hooks/useTranslation.ts` | `url.replace('http', 'ws')` breaks on hostnames containing "http" | Use `new URL(apiUrl); url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'` |
 | 6 | `apps/api/src/routes/ws.ts` | Backend ignores frontend `sessionId`, generates its own | Use `event.sessionId` from the `start` JSON message |
@@ -34,8 +34,8 @@ Make the existing live-translation monorepo a fully deployed, production-ready w
 - On unexpected close (`code !== 1000`), retry up to 5 times
 - Exponential backoff: 1s → 2s → 4s → 8s → 16s
 - New status value: `'reconnecting'`
-- If recording was active when disconnect happened, resume after reconnect: re-send `start` event and re-connect audio worklet
-- Surface status to `useTranslation` hook → show `"Verbinde neu..."` indicator in UI
+- After reconnect succeeds, show `"Verbindung wiederhergestellt — bitte Aufnahme neu starten"` — user restarts manually (auto-resume would risk double-registering the AudioWorklet)
+- Surface `status` to `useTranslation` hook → show `"Verbinde neu..."` indicator in UI during retries; show error after 5 failed attempts
 
 ### Structured Error Handling
 Three error categories returned as `WSErrorEvent`:
