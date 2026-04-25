@@ -7,7 +7,7 @@ import { SUPPORTED_LANGUAGES } from '@saas/shared';
 export function TranslationApp() {
   const [sourceLang, setSourceLang] = useState('de');
   const [targetLang, setTargetLang] = useState('en');
-  const { lines, isRecording, error, start, stop } = useTranslation(sourceLang, targetLang);
+  const { lines, isRecording, error, start, stop, wsStatus } = useTranslation(sourceLang, targetLang);
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '32px', fontFamily: 'monospace' }}>
@@ -30,21 +30,40 @@ export function TranslationApp() {
       {/* Mikrofon Button */}
       <button
         onClick={isRecording ? stop : start}
+        disabled={wsStatus === 'reconnecting'}
         style={{
           width: '80px', height: '80px', borderRadius: '50%', border: 'none',
           background: isRecording ? '#ef4444' : '#4f46e5',
-          color: 'white', fontSize: '28px', cursor: 'pointer',
-          marginBottom: '32px', display: 'block',
+          color: 'white', fontSize: '28px', cursor: wsStatus === 'reconnecting' ? 'not-allowed' : 'pointer',
+          marginBottom: '24px', display: 'block',
           boxShadow: isRecording ? '0 0 0 8px rgba(239,68,68,0.2)' : 'none',
           transition: 'all 0.2s',
+          opacity: wsStatus === 'reconnecting' ? 0.6 : 1,
         }}
       >
         {isRecording ? '⏹' : '🎙'}
       </button>
 
-      {/* Fehler */}
+      {/* Reconnect Status */}
+      {wsStatus === 'reconnecting' && (
+        <div style={{ color: '#f59e0b', marginBottom: '16px', fontSize: '13px' }}>
+          Verbindung unterbrochen — verbinde neu...
+        </div>
+      )}
+      {wsStatus === 'error' && (
+        <div style={{ color: '#ef4444', marginBottom: '16px', fontSize: '13px' }}>
+          Verbindung fehlgeschlagen. Bitte Seite neu laden.
+        </div>
+      )}
+
+      {/* App-Fehler */}
       {error && (
-        <div style={{ color: '#ef4444', marginBottom: '16px', fontSize: '13px' }}>{error}</div>
+        <div style={{
+          color: '#ef4444', marginBottom: '16px', fontSize: '13px',
+          padding: '12px', background: '#1f0000', borderRadius: '8px', border: '1px solid #3f0000',
+        }}>
+          {error}
+        </div>
       )}
 
       {/* Transkript */}
