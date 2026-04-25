@@ -1,52 +1,83 @@
 // features/translation/hooks/useTranslation.ts
 'use client';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useWebSocket } from '@saas/core/ws-gateway/client';
-import type { WSTranscriptEvent } from '@saas/shared';
+import type { WSTranscriptEvent, WSErrorEvent } from '@saas/shared';
 
 export interface TranscriptLine {
-  id:          string;
-  original:    string;
-  translated:  string;
-  isFinal:     boolean;
-  timestamp:   number;
+  id:         string;
+  original:   string;
+  translated: string;
+  isFinal:    boolean;
+  timestamp:  number;
 }
 
 export function useTranslation(sourceLang: string, targetLang: string) {
-  const [lines, setLines]         = useState<TranscriptLine[]>([]);
-  const [isRecording, setIsRec]   = useState(false);
-  const [error, setError]         = useState<string | null>(null);
-  const workletRef                = useRef<AudioWorkletNode | null>(null);
-  const contextRef                = useRef<AudioContext | null>(null);
-  const interimIdRef              = useRef<string>('interim');
+  const [lines, setLines]       = useState<TranscriptLine[]>([]);
+  const [isRecording, setIsRec] = useState(false);
+  const [error, setError]       = useState<string | null>(null);
+  const workletRef              = useRef<AudioWorkletNode | null>(null);
+  const contextRef              = useRef<AudioContext | null>(null);
+  const streamRef               = useRef<MediaStream | null>(null);
+  const interimIdRef            = useRef<string>('interim');
 
-  const ws = useWebSocket(
-    `${process.env.NEXT_PUBLIC_API_URL!.replace('http', 'ws')}/ws/translate`
-  );
-
-  // Nachrichten vom Server verarbeiten
-  const handleMessage = useCallback((data: WSTranscriptEvent) => {
-    if (data.type === 'interim') {
-      setLines(prev => {
-        const rest = prev.filter(l => l.id !== interimIdRef.current);
-        return [...rest, { id: interimIdRef.current, original: data.original, translated: '', isFinal: false, timestamp: Date.now() }];
-      });
-    }
-    if (data.type === 'final') {
-      setLines(prev => {
-        const rest = prev.filter(l => l.id !== interimIdRef.current);
-        return [...rest, { id: crypto.randomUUID(), original: data.original, translated: data.translated, isFinal: true, timestamp: Date.now() }];
-      });
-    }
-    if (data.type === 'error') setError(data.message);
+  // Fix: safe protocol replacement using URL API
+  const wsUrl = useMemo(() => {
+    const u = new URL(process.env.NEXT_PUBLIC_API_URL!);
+    u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${u.toString()}ws/translate`;
   }, []);
+
+  const ws = useWebSocket(wsUrl);
+
+  // Fix: register message handler once — client stores it in a ref and re-applies on reconnect
+  useEffect(() => {
+    ws.onMessage((data: WSTranscriptEvent | WSErrorEvent) => {
+      if (data.type === 'interim') {
+        setLines(prev => {
+          const rest = prev.filter(l => l.id !== interimIdRef.current);
+          return [...rest, {
+            id: interimIdRef.current,
+            original: (data as WSTranscriptEvent).original,
+            translated: '',
+            isFinal: false,
+            timestamp: Date.now(),
+          }];
+        });
+      }
+      if (data.type === 'final') {
+        setLines(prev => {
+          const rest = prev.filter(l => l.id !== interimIdRef.current);
+          return [...rest, {
+            id: crypto.randomUUID(),
+            original: (data as WSTranscriptEvent).original,
+            translated: (data as WSTranscriptEvent).translated,
+            isFinal: true,
+            timestamp: Date.now(),
+          }];
+        });
+      }
+      if (data.type === 'error') {
+        const err = data as WSErrorEvent;
+        if (err.code === 'BILLING_LIMIT') {
+          setError('Dein Free-Tier-Kontingent ist aufgebraucht. Bitte abonniere einen Plan.');
+          setIsRec(false);
+        } else if (err.code === 'AUTH_ERROR') {
+          window.location.href = '/auth/sign-in';
+        } else {
+          setError(err.message);
+        }
+      }
+    });
+  }, [ws]);
 
   const start = useCallback(async () => {
     setError(null);
     setLines([]);
 
-    // Mikrofon + AudioWorklet
     const stream  = await navigator.mediaDevices.getUserMedia({ audio: true });
+    streamRef.current = stream;
+
     const context = new AudioContext({ sampleRate: 48000 });
     await context.audioWorklet.addModule('/worklets/pcm-processor.js');
 
@@ -59,20 +90,20 @@ export function useTranslation(sourceLang: string, targetLang: string) {
     contextRef.current = context;
     workletRef.current = worklet;
 
-    // WS starten
     ws.connect();
-    ws.onMessage(handleMessage);
     ws.sendJSON({ type: 'start', sourceLang, targetLang, sessionId: crypto.randomUUID() });
     setIsRec(true);
-  }, [sourceLang, targetLang, ws, handleMessage]);
+  }, [sourceLang, targetLang, ws]);
 
   const stop = useCallback(async () => {
     ws.sendJSON({ type: 'stop' });
     ws.disconnect();
     workletRef.current?.disconnect();
     await contextRef.current?.close();
+    // Fix: stop mic stream so browser indicator goes off
+    streamRef.current?.getTracks().forEach(t => t.stop());
     setIsRec(false);
   }, [ws]);
 
-  return { lines, isRecording, error, start, stop };
+  return { lines, isRecording, error, start, stop, wsStatus: ws.status };
 }
