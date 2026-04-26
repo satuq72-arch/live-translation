@@ -24,7 +24,9 @@ export async function POST(req: Request) {
 
   if (event.type === 'user.created') {
     const { id, email_addresses } = event.data;
-    await createUserFromClerk(id, email_addresses[0]?.email_address);
+    const email = email_addresses?.[0]?.email_address;
+    if (!email) return new Response('Missing email address', { status: 400 });
+    await createUserFromClerk(id, email);
   }
 
   return new Response('OK', { status: 200 });

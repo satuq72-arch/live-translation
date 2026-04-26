@@ -1,9 +1,9 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { getAuth } from '@clerk/fastify';
 
-// Clerk JWT Middleware — schützt alle Routes
 export async function requireAuth(req: FastifyRequest, reply: FastifyReply) {
-  const { userId } = req.auth;
+  const { userId } = getAuth(req);
   if (!userId) {
-    reply.status(401).send({ error: 'Unauthorized' });
+    return reply.status(401).send({ error: 'Unauthorized' });
   }
 }

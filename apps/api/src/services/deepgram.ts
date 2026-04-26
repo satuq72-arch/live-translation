@@ -1,9 +1,10 @@
-// apps/api/src/services/deepgram.ts — Schritt 6
-import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk';
+import { DeepgramClient } from '@deepgram/sdk';
 import { translate } from './deepl';
 
-const deepgram    = createClient(process.env.DEEPGRAM_API_KEY!);
+const deepgram = new DeepgramClient({ apiKey: process.env.DEEPGRAM_API_KEY! });
 const connections = new Map<string, any>();
+
+const CONNECT_TIMEOUT_MS = 8000;
 
 export const handleAudio = {
 
@@ -13,56 +14,66 @@ export const handleAudio = {
     event:     { sourceLang: string; targetLang: string },
     onResult:  (data: object) => void
   ) {
-    const live = deepgram.listen.live({
-      model:             'nova-2',
-      language:          event.sourceLang,
-      encoding:          'linear16',
-      sample_rate:       48000,
-      interim_results:   true,
-      utterance_end_ms:  1000,
-      punctuate:         true,
-    });
+    const opts: any = {
+      model:            'nova-2',
+      language:         event.sourceLang,
+      encoding:         'linear16',
+      sample_rate:      48000,
+      interim_results:  'true',
+      utterance_end_ms: '1000',
+      punctuate:        'true',
+    };
+    const conn = await deepgram.listen.v1.connect(opts);
 
-    live.on(LiveTranscriptionEvents.Transcript, async (data) => {
-      const transcript = data.channel.alternatives[0].transcript;
+    conn.on('message', async (data) => {
+      if (data.type !== 'Results') return;
+      const transcript = data.channel.alternatives[0]?.transcript;
       if (!transcript) return;
 
-      const isFinal = data.is_final;
+      const isFinal = data.is_final ?? false;
 
-      // Interim: sofort anzeigen (kein DeepL)
       if (!isFinal) {
         onResult({ type: 'interim', original: transcript, translated: '' });
         return;
       }
 
-      // Final: übersetzen
       const translated = await translate(transcript, event.sourceLang, event.targetLang);
       onResult({
-        type:       'final',
-        original:   transcript,
+        type:      'final',
+        original:  transcript,
         translated,
-        duration:   data.duration,
-        timestamp:  Date.now(),
+        duration:  data.duration,
+        timestamp: Date.now(),
       });
     });
 
-    live.on(LiveTranscriptionEvents.Error, (err) => {
+    conn.on('error', (err) => {
+      connections.delete(sessionId);
       onResult({ type: 'error', code: 'DEEPGRAM_ERROR', message: err.message });
     });
 
-    live.on(LiveTranscriptionEvents.Close, () => {
-      connections.delete(userId);
+    conn.on('close', () => {
+      connections.delete(sessionId);
     });
 
-    connections.set(userId, live);
+    conn.connect();
+
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Deepgram connection timeout')), CONNECT_TIMEOUT_MS)
+    );
+    await Promise.race([conn.waitForOpen(), timeout]);
+
+    connections.set(sessionId, conn);
   },
 
-  sendAudio(userId: string, chunk: Buffer) {
-    connections.get(userId)?.send(chunk);
+  sendAudio(sessionId: string, chunk: Buffer) {
+    connections.get(sessionId)?.sendMedia(chunk);
   },
 
-  async stop(userId: string) {
-    const conn = connections.get(userId);
-    if (conn) { conn.finish(); connections.delete(userId); }
+  async stop(sessionId: string) {
+    const conn = connections.get(sessionId);
+    if (!conn) return;
+    connections.delete(sessionId);
+    try { conn.close(); } catch { /* already closed */ }
   },
 };

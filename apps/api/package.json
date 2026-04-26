@@ -3,22 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev":   "tsx watch src/index.ts",
-    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup",
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "fastify":          "^4.27.0",
-    "@fastify/cors":    "^9.0.0",
-    "@fastify/websocket":"^10.0.0",
-    "@clerk/fastify":   "^1.0.0",
-    "@saas/core":       "*",
-    "@saas/shared":     "*",
-    "dotenv":           "^16.4.0"
+    "@clerk/fastify": "^1.0.0",
+    "@deepgram/sdk": "^5.0.0",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/websocket": "^10.0.0",
+    "@saas/core": "*",
+    "@saas/shared": "*",
+    "deepl-node": "^1.26.0",
+    "dotenv": "^16.4.0",
+    "fastify": "^4.27.0"
   },
   "devDependencies": {
-    "tsx":          "^4.0.0",
-    "typescript":   "^5.4.0",
-    "@types/node":  "^20.0.0"
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.4.0"
   }
 }

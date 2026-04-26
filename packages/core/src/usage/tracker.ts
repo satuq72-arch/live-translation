@@ -8,7 +8,7 @@ export class UsageTracker {
   private userId:   string;
   private sessionId: string;
   private count:    number = 0;
-  private interval: NodeJS.Timer | null = null;
+  private interval: ReturnType<typeof setInterval> | null = null;
 
   constructor(userId: string, sessionId: string) {
     this.userId    = userId;

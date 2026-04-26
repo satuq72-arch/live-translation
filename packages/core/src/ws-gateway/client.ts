@@ -1,4 +1,4 @@
-// packages/core/src/ws-gateway/client.ts
+'use client';
 import { useEffect, useRef, useCallback, useState } from 'react';
 
 export type WSStatus = 'connecting' | 'connected' | 'disconnected' | 'error' | 'reconnecting';
@@ -10,22 +10,19 @@ export function useWebSocket(url: string) {
   const retryCount  = useRef(0);
   const retryTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handlerRef  = useRef<((data: any) => void) | null>(null);
+  const openResolve = useRef<(() => void) | null>(null);
   const [status, setStatus] = useState<WSStatus>('disconnected');
 
-  // Re-applies the stored handler to the current WebSocket instance.
-  // Called in onopen so reconnects don't lose the handler.
   const applyHandler = useCallback(() => {
     if (!ws.current || !handlerRef.current) return;
     const handler = handlerRef.current;
     ws.current.onmessage = (event) => {
       try { handler(JSON.parse(event.data)); }
-      catch { /* binary frame */ }
+      catch { /* binary frame or parse error */ }
     };
   }, []);
 
-  const connect = useCallback(() => {
-    if (ws.current?.readyState === WebSocket.OPEN) return;
-
+  const connectInternal = useCallback((resolve?: () => void) => {
     setStatus('connecting');
     ws.current = new WebSocket(url);
 
@@ -33,6 +30,9 @@ export function useWebSocket(url: string) {
       setStatus('connected');
       retryCount.current = 0;
       applyHandler();
+      openResolve.current?.();
+      openResolve.current = null;
+      resolve?.();
     };
 
     ws.current.onclose = (event) => {
@@ -44,7 +44,7 @@ export function useWebSocket(url: string) {
         const delay = Math.pow(2, retryCount.current) * 1000;
         retryCount.current += 1;
         setStatus('reconnecting');
-        retryTimer.current = setTimeout(() => connect(), delay);
+        retryTimer.current = setTimeout(() => connectInternal(), delay);
       } else {
         setStatus('error');
       }
@@ -52,6 +52,16 @@ export function useWebSocket(url: string) {
 
     ws.current.onerror = () => setStatus('error');
   }, [url, applyHandler]);
+
+  const connect = useCallback((): Promise<void> => {
+    if (ws.current?.readyState === WebSocket.OPEN) return Promise.resolve();
+    retryCount.current = 0;
+    if (retryTimer.current) { clearTimeout(retryTimer.current); retryTimer.current = null; }
+    return new Promise((resolve) => {
+      openResolve.current = resolve;
+      connectInternal(resolve);
+    });
+  }, [connectInternal]);
 
   const disconnect = useCallback(() => {
     if (retryTimer.current) clearTimeout(retryTimer.current);
@@ -71,7 +81,6 @@ export function useWebSocket(url: string) {
     }
   }, []);
 
-  // Stores handler in ref so it survives reconnects.
   const onMessage = useCallback((handler: (data: any) => void) => {
     handlerRef.current = handler;
     applyHandler();
