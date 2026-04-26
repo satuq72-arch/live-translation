@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
   if (!WEBHOOK_SECRET) throw new Error('Missing CLERK_WEBHOOK_SECRET');
 
-  const headerPayload = headers();
+  const headerPayload = await headers();
   const body = await req.text();
 
   const wh = new Webhook(WEBHOOK_SECRET);
