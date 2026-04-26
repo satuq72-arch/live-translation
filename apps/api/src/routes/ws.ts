@@ -1,81 +1,112 @@
-// apps/api/src/routes/ws.ts
 import type { FastifyPluginAsync } from 'fastify';
 import { getAuth } from '@clerk/fastify';
 import { sessionManager } from '@saas/core/ws-gateway/server';
 import { UsageTracker }   from '@saas/core/usage/tracker';
-import { checkFreeTier }  from '@saas/core/billing/usage';
+import { canUseService }  from '@saas/core/billing/usage';
 import { handleAudio }    from '../services/deepgram';
+import { SUPPORTED_LANGUAGES } from '@saas/shared';
 import type { WSErrorEvent } from '@saas/shared';
 
 const wsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/translate', { websocket: true }, async (socket, req) => {
 
-    // 1. Auth
     const { userId } = getAuth(req);
     if (!userId) {
       socket.close(1008, 'Unauthorized');
       return;
     }
 
-    // 2. Free Tier prüfen und durchsetzen
-    const { hasFreeTier, remaining } = await checkFreeTier(userId);
-    if (!hasFreeTier || remaining <= 0) {
-      const err: WSErrorEvent = { type: 'error', code: 'BILLING_LIMIT', message: 'Dein Free-Tier-Kontingent ist aufgebraucht.' };
+    const { allowed, reason } = await canUseService(userId);
+    if (!allowed) {
+      const err: WSErrorEvent = {
+        type:    'error',
+        code:    reason === 'USER_NOT_FOUND' ? 'AUTH_ERROR' : 'BILLING_LIMIT',
+        message: reason === 'BILLING_LIMIT'
+          ? 'Dein Kontingent ist aufgebraucht. Bitte abonniere einen Plan.'
+          : 'Benutzer nicht gefunden.',
+      };
       socket.send(JSON.stringify(err));
-      socket.close(1000, 'Billing limit');
+      socket.close(1000, reason);
       return;
     }
 
     let sessionId: string | null = null;
-    let tracker: UsageTracker | null = null;
+    let tracker:   UsageTracker | null = null;
+    let cleaning = false;
+
+    async function cleanup() {
+      if (cleaning) return;
+      cleaning = true;
+      const sid = sessionId;
+      const t   = tracker;
+      sessionId = null;
+      tracker   = null;
+      try {
+        if (sid) {
+          await handleAudio.stop(sid);
+          sessionManager.remove(sid);
+        }
+        if (t) await t.stop();
+      } catch (err) {
+        app.log.error({ err }, 'Error during WebSocket cleanup');
+      }
+    }
 
     socket.on('message', async (msg: Buffer) => {
-      const isJSON = msg[0] === 123; // '{'
+      // Try JSON first; fall back to binary audio
+      let event: any = null;
+      if (msg[0] === 123 /* '{' */ || msg[0] === 91 /* '[' */) {
+        try { event = JSON.parse(msg.toString()); } catch { /* not JSON */ }
+      }
 
-      if (isJSON) {
-        let event: any;
-        try { event = JSON.parse(msg.toString()); } catch { return; }
-
+      if (event) {
         if (event.type === 'start') {
+          if (sessionId) return;  // idempotency guard — ignore duplicate start
           if (!event.sessionId) {
-            socket.send(JSON.stringify({ type: 'error', code: 'DEEPGRAM_ERROR', message: 'Missing sessionId' } satisfies WSErrorEvent));
+            socket.send(JSON.stringify({
+              type: 'error', code: 'AUTH_ERROR', message: 'Missing sessionId',
+            } satisfies WSErrorEvent));
             return;
           }
+
+          const langs = Object.keys(SUPPORTED_LANGUAGES);
+          if (!langs.includes(event.sourceLang) || !langs.includes(event.targetLang)) {
+            socket.send(JSON.stringify({
+              type: 'error', code: 'DEEPGRAM_ERROR',
+              message: `Unsupported language. Supported: ${langs.join(', ')}`,
+            } satisfies WSErrorEvent));
+            return;
+          }
+
           sessionId = event.sessionId as string;
           tracker   = new UsageTracker(userId, sessionId);
           sessionManager.add(userId, sessionId, socket as any);
 
           try {
             await handleAudio.start(userId, sessionId, event, (result) => {
-              sessionManager.send(sessionId, result);
+              sessionManager.send(sessionId!, result);
               if ((result as any).type === 'final') {
                 tracker!.tick(((result as any).duration ?? 0) / 60);
               }
             });
           } catch (err: any) {
-            const wsErr: WSErrorEvent = { type: 'error', code: 'DEEPGRAM_ERROR', message: err.message };
-            socket.send(JSON.stringify(wsErr));
+            socket.send(JSON.stringify({
+              type: 'error', code: 'DEEPGRAM_ERROR', message: err.message,
+            } satisfies WSErrorEvent));
           }
         }
 
-        if (event.type === 'stop' && sessionId) {
-          await handleAudio.stop(userId);
-          await tracker?.stop();
-          sessionManager.remove(sessionId);
-          sessionId = null;
+        if (event.type === 'stop') {
+          await cleanup();
         }
 
       } else {
-        // Binary PCM Audio → Deepgram
-        handleAudio.sendAudio(userId, msg);
+        // Binary PCM audio → Deepgram
+        if (sessionId) handleAudio.sendAudio(sessionId, msg);
       }
     });
 
-    socket.on('close', async () => {
-      await handleAudio.stop(userId);
-      await tracker?.stop();
-      if (sessionId) sessionManager.remove(sessionId);
-    });
+    socket.on('close', () => { cleanup(); });
   });
 };
 

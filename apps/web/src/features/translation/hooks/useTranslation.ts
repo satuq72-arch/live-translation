@@ -59,9 +59,9 @@ export function useTranslation(sourceLang: string, targetLang: string) {
       }
       if (data.type === 'error') {
         const err = data as WSErrorEvent;
+        setIsRec(false);
         if (err.code === 'BILLING_LIMIT') {
-          setError('Dein Free-Tier-Kontingent ist aufgebraucht. Bitte abonniere einen Plan.');
-          setIsRec(false);
+          setError('Dein Kontingent ist aufgebraucht. Bitte abonniere einen Plan.');
         } else if (err.code === 'AUTH_ERROR') {
           window.location.href = '/auth/sign-in';
         } else {
@@ -75,24 +75,39 @@ export function useTranslation(sourceLang: string, targetLang: string) {
     setError(null);
     setLines([]);
 
-    const stream  = await navigator.mediaDevices.getUserMedia({ audio: true });
-    streamRef.current = stream;
+    let stream:  MediaStream  | null = null;
+    let context: AudioContext | null = null;
 
-    const context = new AudioContext({ sampleRate: 48000 });
-    await context.audioWorklet.addModule('/worklets/pcm-processor.js');
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
 
-    const source  = context.createMediaStreamSource(stream);
-    const worklet = new AudioWorkletNode(context, 'pcm-processor');
+      context = new AudioContext({ sampleRate: 48000 });
+      await context.audioWorklet.addModule('/worklets/pcm-processor.js');
 
-    worklet.port.onmessage = (e) => ws.sendBinary(e.data);
-    source.connect(worklet);
+      const source  = context.createMediaStreamSource(stream);
+      const worklet = new AudioWorkletNode(context, 'pcm-processor');
 
-    contextRef.current = context;
-    workletRef.current = worklet;
+      worklet.port.onmessage = (e) => ws.sendBinary(e.data);
+      source.connect(worklet);
 
-    ws.connect();
-    ws.sendJSON({ type: 'start', sourceLang, targetLang, sessionId: crypto.randomUUID() });
-    setIsRec(true);
+      contextRef.current = context;
+      workletRef.current = worklet;
+
+      await ws.connect();
+      ws.sendJSON({ type: 'start', sourceLang, targetLang, sessionId: crypto.randomUUID() });
+      setIsRec(true);
+    } catch (err: any) {
+      stream?.getTracks().forEach(t => t.stop());
+      await context?.close();
+      streamRef.current  = null;
+      contextRef.current = null;
+      workletRef.current = null;
+      const msg = err?.name === 'NotAllowedError'
+        ? 'Mikrofonzugriff verweigert. Bitte erlaube den Zugriff in den Browser-Einstellungen.'
+        : err?.message ?? 'Fehler beim Starten der Aufnahme.';
+      setError(msg);
+    }
   }, [sourceLang, targetLang, ws]);
 
   const stop = useCallback(async () => {
