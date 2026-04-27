@@ -7,7 +7,8 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
-    "build": "npm run build --workspace=apps/web"
+    "build": "npm run build --workspace=apps/web",
+    "start": "npm start --workspace=@saas/api"
   },
   "devDependencies": {
     "tsup": "^8.5.1",
