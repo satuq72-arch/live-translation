@@ -6,7 +6,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) redirect('/auth/sign-in');
   return <main className="min-h-screen">{children}</main>;
 }

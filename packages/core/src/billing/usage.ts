@@ -1,19 +1,44 @@
 import Stripe from 'stripe';
 import { supabase } from '../db/client';
-import { BILLING_CONFIG } from './config';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-export async function canUseService(clerkUserId: string): Promise<{
-  allowed:  boolean;
-  reason?:  'BILLING_LIMIT' | 'USER_NOT_FOUND';
-}> {
-  const { data: user } = await supabase
+type UserRow = { id: string; free_tier_used: boolean; free_tier_remaining: number };
+
+async function getOrCreateUser(clerkUserId: string, email?: string): Promise<UserRow | null> {
+  const { data: existing } = await supabase
     .from('users')
     .select('id, free_tier_used, free_tier_remaining')
     .eq('clerk_id', clerkUserId)
     .single();
 
+  if (existing) return existing;
+  if (!email) return null;
+
+  // Clerk webhook may not have fired yet — create lazily
+  const { data: created } = await supabase
+    .from('users')
+    .upsert(
+      {
+        clerk_id:            clerkUserId,
+        email,
+        plan:                'usage-based',
+        free_tier_used:      false,
+        free_tier_remaining: 30,
+      },
+      { onConflict: 'clerk_id' }
+    )
+    .select('id, free_tier_used, free_tier_remaining')
+    .single();
+
+  return created ?? null;
+}
+
+export async function canUseService(
+  clerkUserId: string,
+  email?: string
+): Promise<{ allowed: boolean; reason?: 'BILLING_LIMIT' | 'USER_NOT_FOUND' }> {
+  const user = await getOrCreateUser(clerkUserId, email);
   if (!user) return { allowed: false, reason: 'USER_NOT_FOUND' };
 
   if (!user.free_tier_used && user.free_tier_remaining > 0) {
@@ -39,12 +64,7 @@ export async function reportUsage(
 ) {
   if (units <= 0) return;
 
-  const { data: user } = await supabase
-    .from('users')
-    .select('id, free_tier_used, free_tier_remaining')
-    .eq('clerk_id', clerkUserId)
-    .single();
-
+  const user = await getOrCreateUser(clerkUserId);
   if (!user) throw new Error('User not found');
 
   await supabase.from('usage_logs').insert({

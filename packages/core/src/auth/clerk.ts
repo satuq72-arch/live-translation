@@ -1,14 +1,8 @@
-// packages/core/auth/clerk.ts
-// ✅ Wiederverwendbar — für jede SaaS
-
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 import { supabase } from '../db/client';
 
-// ─────────────────────────────────────────────
-// Server-seitig: aktuellen User aus Supabase holen
-// ─────────────────────────────────────────────
 export async function getUser() {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) return null;
 
   const { data } = await supabase
@@ -20,20 +14,20 @@ export async function getUser() {
   return data;
 }
 
-// ─────────────────────────────────────────────
-// Webhook: neuen User in Supabase anlegen
-// Wird von Clerk aufgerufen wenn sich jemand registriert
-// ─────────────────────────────────────────────
 export async function createUserFromClerk(clerkUserId: string, email: string) {
+  // Upsert so repeated webhook deliveries and lazy-creation don't conflict
   const { data, error } = await supabase
     .from('users')
-    .insert({
-      clerk_id:            clerkUserId,
-      email,
-      plan:                'usage-based',
-      free_tier_used:      false,
-      free_tier_remaining: 30,  // = BILLING_CONFIG.freeTierUnits
-    })
+    .upsert(
+      {
+        clerk_id:            clerkUserId,
+        email,
+        plan:                'usage-based',
+        free_tier_used:      false,
+        free_tier_remaining: 30,
+      },
+      { onConflict: 'clerk_id' }
+    )
     .select()
     .single();
 

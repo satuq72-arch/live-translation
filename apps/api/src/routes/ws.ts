@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { verifyToken } from '@clerk/backend';
+import { verifyToken, createClerkClient } from '@clerk/backend';
 import { sessionManager } from '@saas/core/ws-gateway/server';
 import { UsageTracker }   from '@saas/core/usage/tracker';
 import { canUseService }  from '@saas/core/billing/usage';
@@ -7,9 +7,12 @@ import { handleAudio }    from '../services/deepgram';
 import { SUPPORTED_LANGUAGES } from '@saas/shared';
 import type { WSErrorEvent } from '@saas/shared';
 
+const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
+
 const wsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/translate', { websocket: true }, async (socket, req) => {
 
+    // 1. Verify Clerk token from query parameter (cross-origin WS can't use cookies)
     const token = (req.query as any).token as string | undefined;
     if (!token) {
       socket.close(1008, 'Unauthorized');
@@ -25,7 +28,15 @@ const wsRoutes: FastifyPluginAsync = async (app) => {
       return;
     }
 
-    const { allowed, reason } = await canUseService(userId);
+    // 2. Fetch email from Clerk so user can be created lazily if webhook hasn't fired yet
+    let email: string | undefined;
+    try {
+      const clerkUser = await clerk.users.getUser(userId);
+      email = clerkUser.emailAddresses[0]?.emailAddress;
+    } catch { /* non-critical — canUseService falls back gracefully */ }
+
+    // 3. Billing check
+    const { allowed, reason } = await canUseService(userId, email);
     if (!allowed) {
       const err: WSErrorEvent = {
         type:    'error',
@@ -70,7 +81,7 @@ const wsRoutes: FastifyPluginAsync = async (app) => {
 
       if (event) {
         if (event.type === 'start') {
-          if (sessionId) return;  // idempotency guard — ignore duplicate start
+          if (sessionId) return;  // idempotency guard
           if (!event.sessionId) {
             socket.send(JSON.stringify({
               type: 'error', code: 'AUTH_ERROR', message: 'Missing sessionId',
