@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { getAuth } from '@clerk/fastify';
+import { verifyToken } from '@clerk/backend';
 import { sessionManager } from '@saas/core/ws-gateway/server';
 import { UsageTracker }   from '@saas/core/usage/tracker';
 import { canUseService }  from '@saas/core/billing/usage';
@@ -10,8 +10,17 @@ import type { WSErrorEvent } from '@saas/shared';
 const wsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/translate', { websocket: true }, async (socket, req) => {
 
-    const { userId } = getAuth(req);
-    if (!userId) {
+    const token = (req.query as any).token as string | undefined;
+    if (!token) {
+      socket.close(1008, 'Unauthorized');
+      return;
+    }
+
+    let userId: string;
+    try {
+      const payload = await verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY! });
+      userId = payload.sub;
+    } catch {
       socket.close(1008, 'Unauthorized');
       return;
     }

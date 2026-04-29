@@ -6,11 +6,12 @@ export type WSStatus = 'connecting' | 'connected' | 'disconnected' | 'error' | '
 const MAX_RETRIES = 5;
 
 export function useWebSocket(url: string) {
-  const ws          = useRef<WebSocket | null>(null);
-  const retryCount  = useRef(0);
-  const retryTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handlerRef  = useRef<((data: any) => void) | null>(null);
-  const openResolve = useRef<(() => void) | null>(null);
+  const ws           = useRef<WebSocket | null>(null);
+  const retryCount   = useRef(0);
+  const retryTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handlerRef   = useRef<((data: any) => void) | null>(null);
+  const openResolve  = useRef<(() => void) | null>(null);
+  const currentUrl   = useRef<string>(url);
   const [status, setStatus] = useState<WSStatus>('disconnected');
 
   const applyHandler = useCallback(() => {
@@ -24,7 +25,7 @@ export function useWebSocket(url: string) {
 
   const connectInternal = useCallback((resolve?: () => void) => {
     setStatus('connecting');
-    ws.current = new WebSocket(url);
+    ws.current = new WebSocket(currentUrl.current);
 
     ws.current.onopen = () => {
       setStatus('connected');
@@ -51,10 +52,13 @@ export function useWebSocket(url: string) {
     };
 
     ws.current.onerror = () => setStatus('error');
-  }, [url, applyHandler]);
+  }, [applyHandler]);
 
-  const connect = useCallback((): Promise<void> => {
+  // connectUrl is optional — pass a token-bearing URL on first connect,
+  // reconnects reuse the same URL stored in currentUrl ref.
+  const connect = useCallback((connectUrl?: string): Promise<void> => {
     if (ws.current?.readyState === WebSocket.OPEN) return Promise.resolve();
+    if (connectUrl) currentUrl.current = connectUrl;
     retryCount.current = 0;
     if (retryTimer.current) { clearTimeout(retryTimer.current); retryTimer.current = null; }
     return new Promise((resolve) => {

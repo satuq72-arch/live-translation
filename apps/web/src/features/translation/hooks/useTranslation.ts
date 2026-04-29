@@ -1,6 +1,6 @@
-// features/translation/hooks/useTranslation.ts
 'use client';
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { useWebSocket } from '@saas/core/ws-gateway/client';
 import type { WSTranscriptEvent, WSErrorEvent } from '@saas/shared';
 
@@ -13,24 +13,23 @@ export interface TranscriptLine {
 }
 
 export function useTranslation(sourceLang: string, targetLang: string) {
-  const [lines, setLines]       = useState<TranscriptLine[]>([]);
-  const [isRecording, setIsRec] = useState(false);
-  const [error, setError]       = useState<string | null>(null);
-  const workletRef              = useRef<AudioWorkletNode | null>(null);
-  const contextRef              = useRef<AudioContext | null>(null);
-  const streamRef               = useRef<MediaStream | null>(null);
-  const interimIdRef            = useRef<string>('interim');
+  const { getToken }                      = useAuth();
+  const [lines, setLines]                 = useState<TranscriptLine[]>([]);
+  const [isRecording, setIsRec]           = useState(false);
+  const [error, setError]                 = useState<string | null>(null);
+  const workletRef                        = useRef<AudioWorkletNode | null>(null);
+  const contextRef                        = useRef<AudioContext | null>(null);
+  const streamRef                         = useRef<MediaStream | null>(null);
+  const interimIdRef                      = useRef<string>('interim');
 
-  // Fix: safe protocol replacement using URL API
-  const wsUrl = useMemo(() => {
+  const wsBaseUrl = useMemo(() => {
     const u = new URL(process.env.NEXT_PUBLIC_API_URL!);
     u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${u.toString()}ws/translate`;
   }, []);
 
-  const ws = useWebSocket(wsUrl);
+  const ws = useWebSocket(wsBaseUrl);
 
-  // Fix: register message handler once — client stores it in a ref and re-applies on reconnect
   useEffect(() => {
     ws.onMessage((data: WSTranscriptEvent | WSErrorEvent) => {
       if (data.type === 'interim') {
@@ -94,7 +93,10 @@ export function useTranslation(sourceLang: string, targetLang: string) {
       contextRef.current = context;
       workletRef.current = worklet;
 
-      await ws.connect();
+      // Pass Clerk token in WebSocket URL for cross-origin auth
+      const token = await getToken();
+      const wsUrl = token ? `${wsBaseUrl}?token=${token}` : wsBaseUrl;
+      await ws.connect(wsUrl);
       ws.sendJSON({ type: 'start', sourceLang, targetLang, sessionId: crypto.randomUUID() });
       setIsRec(true);
     } catch (err: any) {
@@ -108,14 +110,13 @@ export function useTranslation(sourceLang: string, targetLang: string) {
         : err?.message ?? 'Fehler beim Starten der Aufnahme.';
       setError(msg);
     }
-  }, [sourceLang, targetLang, ws]);
+  }, [sourceLang, targetLang, ws, getToken, wsBaseUrl]);
 
   const stop = useCallback(async () => {
     ws.sendJSON({ type: 'stop' });
     ws.disconnect();
     workletRef.current?.disconnect();
     await contextRef.current?.close();
-    // Fix: stop mic stream so browser indicator goes off
     streamRef.current?.getTracks().forEach(t => t.stop());
     setIsRec(false);
   }, [ws]);
