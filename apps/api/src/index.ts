@@ -13,7 +13,9 @@ declare module 'fastify' {
 const app = Fastify({ logger: true });
 
 // Plugins
-app.register(cors, { origin: process.env.FRONTEND_URL || 'http://localhost:3000' });
+// Strip trailing slash so CORS exact-match works regardless of how FRONTEND_URL is set
+const allowedOrigin = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+app.register(cors, { origin: allowedOrigin });
 app.register(websocket);
 app.register(clerkPlugin);
 
