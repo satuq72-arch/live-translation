@@ -12,9 +12,24 @@ const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 const wsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/translate', { websocket: true }, async (socket, req) => {
 
-    // 1. Verify Clerk token from query parameter (cross-origin WS can't use cookies)
+    // Buffer messages that arrive before async auth is complete.
+    // Without this, the client's 'start' message is lost while the server
+    // is still awaiting verifyToken / canUseService.
+    const pendingMessages: Buffer[] = [];
+    let handleMsg: ((msg: Buffer) => void) | null = null;
+
+    socket.on('message', (msg: Buffer) => {
+      if (handleMsg) {
+        handleMsg(msg);
+      } else {
+        pendingMessages.push(msg);
+      }
+    });
+
+    // ── 1. Auth ──────────────────────────────────────────────────────────────
     const token = (req.query as any).token as string | undefined;
     if (!token) {
+      socket.send(JSON.stringify({ type: 'error', code: 'AUTH_ERROR', message: 'Missing token' } satisfies WSErrorEvent));
       socket.close(1008, 'Unauthorized');
       return;
     }
@@ -23,19 +38,20 @@ const wsRoutes: FastifyPluginAsync = async (app) => {
     try {
       const payload = await verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY! });
       userId = payload.sub;
-    } catch {
+    } catch (e: any) {
+      socket.send(JSON.stringify({ type: 'error', code: 'AUTH_ERROR', message: 'Invalid token' } satisfies WSErrorEvent));
       socket.close(1008, 'Unauthorized');
       return;
     }
 
-    // 2. Fetch email from Clerk so user can be created lazily if webhook hasn't fired yet
+    // ── 2. Fetch email for lazy user creation ────────────────────────────────
     let email: string | undefined;
     try {
       const clerkUser = await clerk.users.getUser(userId);
       email = clerkUser.emailAddresses[0]?.emailAddress;
-    } catch { /* non-critical — canUseService falls back gracefully */ }
+    } catch { /* non-critical */ }
 
-    // 3. Billing check
+    // ── 3. Billing ───────────────────────────────────────────────────────────
     const { allowed, reason } = await canUseService(userId, email);
     if (!allowed) {
       const err: WSErrorEvent = {
@@ -50,6 +66,7 @@ const wsRoutes: FastifyPluginAsync = async (app) => {
       return;
     }
 
+    // ── 4. Session state ─────────────────────────────────────────────────────
     let sessionId: string | null = null;
     let tracker:   UsageTracker | null = null;
     let cleaning = false;
@@ -62,30 +79,25 @@ const wsRoutes: FastifyPluginAsync = async (app) => {
       sessionId = null;
       tracker   = null;
       try {
-        if (sid) {
-          await handleAudio.stop(sid);
-          sessionManager.remove(sid);
-        }
-        if (t) await t.stop();
+        if (sid) { await handleAudio.stop(sid); sessionManager.remove(sid); }
+        if (t)   await t.stop();
       } catch (err) {
-        app.log.error({ err }, 'Error during WebSocket cleanup');
+        app.log.error({ err }, 'cleanup error');
       }
     }
 
-    socket.on('message', async (msg: Buffer) => {
-      // Try JSON first; fall back to binary audio
+    // ── 5. Register real message handler, then drain buffered messages ───────
+    handleMsg = async (msg: Buffer) => {
       let event: any = null;
-      if (msg[0] === 123 /* '{' */ || msg[0] === 91 /* '[' */) {
-        try { event = JSON.parse(msg.toString()); } catch { /* not JSON */ }
+      if (msg[0] === 123 || msg[0] === 91) {
+        try { event = JSON.parse(msg.toString()); } catch { /* binary */ }
       }
 
       if (event) {
         if (event.type === 'start') {
-          if (sessionId) return;  // idempotency guard
+          if (sessionId) return;
           if (!event.sessionId) {
-            socket.send(JSON.stringify({
-              type: 'error', code: 'AUTH_ERROR', message: 'Missing sessionId',
-            } satisfies WSErrorEvent));
+            socket.send(JSON.stringify({ type: 'error', code: 'AUTH_ERROR', message: 'Missing sessionId' } satisfies WSErrorEvent));
             return;
           }
 
@@ -110,23 +122,22 @@ const wsRoutes: FastifyPluginAsync = async (app) => {
               }
             });
           } catch (err: any) {
-            socket.send(JSON.stringify({
-              type: 'error', code: 'DEEPGRAM_ERROR', message: err.message,
-            } satisfies WSErrorEvent));
+            socket.send(JSON.stringify({ type: 'error', code: 'DEEPGRAM_ERROR', message: err.message } satisfies WSErrorEvent));
           }
         }
 
         if (event.type === 'stop') {
           await cleanup();
         }
-
       } else {
-        // Binary PCM audio → Deepgram
         if (sessionId) handleAudio.sendAudio(sessionId, msg);
       }
-    });
+    };
 
-    socket.on('close', () => { cleanup(); });
+    // Drain any messages that arrived during async auth
+    for (const msg of pendingMessages) handleMsg(msg);
+
+    socket.on('close', () => cleanup());
   });
 };
 
