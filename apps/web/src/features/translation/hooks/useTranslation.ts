@@ -62,7 +62,7 @@ export function useTranslation(sourceLang: string, targetLang: string) {
         if (err.code === 'BILLING_LIMIT') {
           setError('Dein Kontingent ist aufgebraucht. Bitte abonniere einen Plan.');
         } else if (err.code === 'AUTH_ERROR') {
-          window.location.href = '/auth/sign-in';
+          setError(err.message || 'Authentifizierungsfehler. Bitte Seite neu laden.');
         } else {
           setError(err.message);
         }

@@ -56,7 +56,8 @@ export const handleAudio = {
       connections.delete(sessionId);
     });
 
-    conn.connect();
+    // Do NOT call conn.connect() — the SDK auto-connects on construction.
+    // Calling it again adds duplicate event listeners and disrupts the in-progress connection.
 
     const timeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Deepgram connection timeout')), CONNECT_TIMEOUT_MS)
@@ -67,7 +68,9 @@ export const handleAudio = {
   },
 
   sendAudio(sessionId: string, chunk: Buffer) {
-    connections.get(sessionId)?.sendMedia(chunk);
+    try {
+      connections.get(sessionId)?.sendMedia(chunk);
+    } catch { /* Deepgram socket not yet open or already closed */ }
   },
 
   async stop(sessionId: string) {

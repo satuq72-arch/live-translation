@@ -52,7 +52,16 @@ const wsRoutes: FastifyPluginAsync = async (app) => {
     } catch { /* non-critical */ }
 
     // ── 3. Billing ───────────────────────────────────────────────────────────
-    const { allowed, reason } = await canUseService(userId, email);
+    let billingResult: { allowed: boolean; reason?: 'BILLING_LIMIT' | 'USER_NOT_FOUND' };
+    try {
+      billingResult = await canUseService(userId, email);
+    } catch (e: any) {
+      app.log.error({ err: e }, 'canUseService error');
+      socket.send(JSON.stringify({ type: 'error', code: 'AUTH_ERROR', message: 'Serverfehler beim Prüfen des Kontos.' } satisfies WSErrorEvent));
+      socket.close(1011, 'Server error');
+      return;
+    }
+    const { allowed, reason } = billingResult;
     if (!allowed) {
       const err: WSErrorEvent = {
         type:    'error',
