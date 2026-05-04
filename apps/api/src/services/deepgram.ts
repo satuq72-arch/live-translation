@@ -61,8 +61,9 @@ export const handleAudio = {
       connections.delete(sessionId);
     });
 
-    // Do NOT call conn.connect() — the SDK auto-connects on construction.
-    // Calling it again adds duplicate event listeners and disrupts the in-progress connection.
+    // conn.connect() is required: SDK uses startClosed:true, so socket doesn't auto-connect.
+    // WrappedListenV1Socket.connect() handles duplicate-listener prevention internally.
+    conn.connect();
 
     const timeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Deepgram connection timeout')), CONNECT_TIMEOUT_MS)
