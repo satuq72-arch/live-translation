@@ -89,6 +89,7 @@ export function useTranslation(sourceLang: string, targetLang: string) {
 
       worklet.port.onmessage = (e) => ws.sendBinary(e.data);
       source.connect(worklet);
+      worklet.connect(context.destination); // keep worklet in the audio graph
 
       contextRef.current = context;
       workletRef.current = worklet;

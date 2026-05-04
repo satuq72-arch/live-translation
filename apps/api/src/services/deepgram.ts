@@ -37,7 +37,12 @@ export const handleAudio = {
         return;
       }
 
-      const translated = await translate(transcript, event.sourceLang, event.targetLang);
+      let translated = '';
+      try {
+        translated = await translate(transcript, event.sourceLang, event.targetLang);
+      } catch (e: any) {
+        // DeepL failure: still send original without translation
+      }
       onResult({
         type:      'final',
         original:  transcript,

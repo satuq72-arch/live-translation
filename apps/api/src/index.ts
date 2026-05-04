@@ -3,7 +3,6 @@ import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import { clerkPlugin } from '@clerk/fastify';
 import { supabase } from '@saas/core/db/client';
-import { DeepgramClient } from '@deepgram/sdk';
 import 'dotenv/config';
 
 declare module 'fastify' {
@@ -59,7 +58,23 @@ app.get('/health/full', async (_req, reply) => {
     results.supabase = 'skipped (missing env vars)';
   }
 
+  // Test Deepgram key via REST (no WebSocket needed)
+  if (results.deepgram_key === 'set') {
+    try {
+      const resp = await fetch('https://api.deepgram.com/v1/auth/token', {
+        headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      results.deepgram = resp.ok ? 'ok' : `http_${resp.status}`;
+    } catch (e: any) {
+      results.deepgram = `exception: ${e.message}`;
+    }
+  } else {
+    results.deepgram = 'skipped (missing key)';
+  }
+
   const allOk = results.supabase === 'ok' &&
+    results.deepgram         === 'ok' &&
     results.supabase_url      === 'set' &&
     results.supabase_role_key === 'set' &&
     results.deepgram_key      === 'set' &&
