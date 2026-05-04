@@ -1,10 +1,10 @@
-import { DeepgramClient } from '@deepgram/sdk';
+import WebSocket from 'ws';
 import { translate } from './deepl';
 
-const deepgram = new DeepgramClient({ apiKey: process.env.DEEPGRAM_API_KEY! });
-const connections = new Map<string, any>();
+const connections = new Map<string, WebSocket>();
+const CONNECT_TIMEOUT_MS = 10000;
 
-const CONNECT_TIMEOUT_MS = 8000;
+const DG_BASE = 'wss://api.deepgram.com/v1/listen';
 
 export const handleAudio = {
 
@@ -14,24 +14,40 @@ export const handleAudio = {
     event:     { sourceLang: string; targetLang: string },
     onResult:  (data: object) => void
   ) {
-    const opts: any = {
+    const params = new URLSearchParams({
       model:            'nova-2',
       language:         event.sourceLang,
       encoding:         'linear16',
-      sample_rate:      48000,
+      sample_rate:      '48000',
       interim_results:  'true',
       utterance_end_ms: '1000',
       punctuate:        'true',
-    };
-    const conn = await deepgram.listen.v1.connect(opts);
+    });
 
-    conn.on('message', async (data) => {
+    const ws = new WebSocket(`${DG_BASE}?${params}`, {
+      headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` },
+    });
+
+    // Wait for open with timeout
+    await new Promise<void>((resolve, reject) => {
+      const t = setTimeout(() => {
+        ws.terminate();
+        reject(new Error('Deepgram connection timeout'));
+      }, CONNECT_TIMEOUT_MS);
+
+      ws.once('open', () => { clearTimeout(t); resolve(); });
+      ws.once('error', (err) => { clearTimeout(t); reject(err); });
+    });
+
+    ws.on('message', async (raw) => {
+      let data: any;
+      try { data = JSON.parse(raw.toString()); } catch { return; }
       if (data.type !== 'Results') return;
-      const transcript = data.channel.alternatives[0]?.transcript;
+
+      const transcript = data.channel?.alternatives?.[0]?.transcript;
       if (!transcript) return;
 
       const isFinal = data.is_final ?? false;
-
       if (!isFinal) {
         onResult({ type: 'interim', original: transcript, translated: '' });
         return;
@@ -40,9 +56,8 @@ export const handleAudio = {
       let translated = '';
       try {
         translated = await translate(transcript, event.sourceLang, event.targetLang);
-      } catch (e: any) {
-        // DeepL failure: still send original without translation
-      }
+      } catch { /* send original if DeepL fails */ }
+
       onResult({
         type:      'final',
         original:  transcript,
@@ -52,37 +67,29 @@ export const handleAudio = {
       });
     });
 
-    conn.on('error', (err) => {
+    ws.on('error', (err) => {
       connections.delete(sessionId);
       onResult({ type: 'error', code: 'DEEPGRAM_ERROR', message: err.message });
     });
 
-    conn.on('close', () => {
+    ws.on('close', () => {
       connections.delete(sessionId);
     });
 
-    // conn.connect() is required: SDK uses startClosed:true, so socket doesn't auto-connect.
-    // WrappedListenV1Socket.connect() handles duplicate-listener prevention internally.
-    conn.connect();
-
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Deepgram connection timeout')), CONNECT_TIMEOUT_MS)
-    );
-    await Promise.race([conn.waitForOpen(), timeout]);
-
-    connections.set(sessionId, conn);
+    connections.set(sessionId, ws);
   },
 
   sendAudio(sessionId: string, chunk: Buffer) {
-    try {
-      connections.get(sessionId)?.sendMedia(chunk);
-    } catch { /* Deepgram socket not yet open or already closed */ }
+    const ws = connections.get(sessionId);
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(chunk);
+    }
   },
 
   async stop(sessionId: string) {
-    const conn = connections.get(sessionId);
-    if (!conn) return;
+    const ws = connections.get(sessionId);
+    if (!ws) return;
     connections.delete(sessionId);
-    try { conn.close(); } catch { /* already closed */ }
+    try { ws.close(1000); } catch { /* already closed */ }
   },
 };
