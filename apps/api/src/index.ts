@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import { clerkPlugin } from '@clerk/fastify';
+import { supabase } from '@saas/core/db/client';
+import { DeepgramClient } from '@deepgram/sdk';
 import 'dotenv/config';
 
 declare module 'fastify' {
@@ -33,6 +35,31 @@ app.register(import('./routes/usage'),  { prefix: '/usage'  });
 
 // Health check
 app.get('/health', async () => ({ status: 'ok', ts: new Date().toISOString() }));
+
+// Full connectivity check — tests Supabase and Deepgram without auth
+app.get('/health/full', async (_req, reply) => {
+  const results: Record<string, string> = {};
+
+  // Test Supabase
+  try {
+    const { error } = await supabase.from('users').select('id').limit(1);
+    results.supabase = error ? `error: ${error.message}` : 'ok';
+  } catch (e: any) {
+    results.supabase = `exception: ${e.message}`;
+  }
+
+  // Test Deepgram key (just instantiate, no actual connection)
+  results.deepgram_key = process.env.DEEPGRAM_API_KEY ? 'set' : 'MISSING';
+  results.deepl_key    = process.env.DEEPL_API_KEY    ? 'set' : 'MISSING';
+  results.clerk_key    = process.env.CLERK_SECRET_KEY  ? 'set' : 'MISSING';
+
+  const allOk = results.supabase === 'ok' &&
+    results.deepgram_key === 'set' &&
+    results.deepl_key    === 'set' &&
+    results.clerk_key    === 'set';
+
+  return reply.code(allOk ? 200 : 503).send({ status: allOk ? 'ok' : 'degraded', ...results });
+});
 
 const start = async () => {
   try {
