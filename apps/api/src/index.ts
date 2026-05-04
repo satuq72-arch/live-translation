@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import { clerkPlugin } from '@clerk/fastify';
 import { supabase } from '@saas/core/db/client';
+import WebSocket from 'ws';
 import 'dotenv/config';
 
 declare module 'fastify' {
@@ -58,23 +59,49 @@ app.get('/health/full', async (_req, reply) => {
     results.supabase = 'skipped (missing env vars)';
   }
 
-  // Test Deepgram key via REST (no WebSocket needed)
+  // Test Deepgram REST key validity
   if (results.deepgram_key === 'set') {
     try {
       const resp = await fetch('https://api.deepgram.com/v1/auth/token', {
         headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` },
         signal: AbortSignal.timeout(5000),
       });
-      results.deepgram = resp.ok ? 'ok' : `http_${resp.status}`;
+      results.deepgram_rest = resp.ok ? 'ok' : `http_${resp.status}`;
     } catch (e: any) {
-      results.deepgram = `exception: ${e.message}`;
+      results.deepgram_rest = `error: ${e.message}`;
     }
+
+    // Test Deepgram WebSocket connection (the actual path used for transcription)
+    await new Promise<void>((resolve) => {
+      const t = setTimeout(() => {
+        results.deepgram_ws = 'timeout after 8s';
+        ws.terminate();
+        resolve();
+      }, 8000);
+
+      const ws = new WebSocket(
+        'wss://api.deepgram.com/v1/listen?model=nova-2&language=de&encoding=linear16&sample_rate=48000',
+        { headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` } }
+      );
+      ws.once('open', () => {
+        clearTimeout(t);
+        results.deepgram_ws = 'ok';
+        ws.close(1000);
+        resolve();
+      });
+      ws.once('error', (err) => {
+        clearTimeout(t);
+        results.deepgram_ws = `error: ${err.message}`;
+        resolve();
+      });
+    });
   } else {
-    results.deepgram = 'skipped (missing key)';
+    results.deepgram_rest = 'skipped (missing key)';
+    results.deepgram_ws   = 'skipped (missing key)';
   }
 
   const allOk = results.supabase === 'ok' &&
-    results.deepgram         === 'ok' &&
+    results.deepgram_ws       === 'ok' &&
     results.supabase_url      === 'set' &&
     results.supabase_role_key === 'set' &&
     results.deepgram_key      === 'set' &&
