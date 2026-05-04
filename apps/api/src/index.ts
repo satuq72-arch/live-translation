@@ -40,23 +40,31 @@ app.get('/health', async () => ({ status: 'ok', ts: new Date().toISOString() }))
 app.get('/health/full', async (_req, reply) => {
   const results: Record<string, string> = {};
 
-  // Test Supabase
-  try {
-    const { error } = await supabase.from('users').select('id').limit(1);
-    results.supabase = error ? `error: ${error.message}` : 'ok';
-  } catch (e: any) {
-    results.supabase = `exception: ${e.message}`;
+  // Env var presence (not values)
+  results.supabase_url      = process.env.SUPABASE_URL              ? 'set' : 'MISSING';
+  results.supabase_role_key = process.env.SUPABASE_SERVICE_ROLE_KEY ? 'set' : 'MISSING';
+  results.deepgram_key      = process.env.DEEPGRAM_API_KEY          ? 'set' : 'MISSING';
+  results.deepl_key         = process.env.DEEPL_API_KEY             ? 'set' : 'MISSING';
+  results.clerk_key         = process.env.CLERK_SECRET_KEY          ? 'set' : 'MISSING';
+
+  // Test Supabase only if creds are present
+  if (results.supabase_url === 'set' && results.supabase_role_key === 'set') {
+    try {
+      const { error } = await supabase.from('users').select('id').limit(1);
+      results.supabase = error ? `error: ${error.message}` : 'ok';
+    } catch (e: any) {
+      results.supabase = `exception: ${e.message}`;
+    }
+  } else {
+    results.supabase = 'skipped (missing env vars)';
   }
 
-  // Test Deepgram key (just instantiate, no actual connection)
-  results.deepgram_key = process.env.DEEPGRAM_API_KEY ? 'set' : 'MISSING';
-  results.deepl_key    = process.env.DEEPL_API_KEY    ? 'set' : 'MISSING';
-  results.clerk_key    = process.env.CLERK_SECRET_KEY  ? 'set' : 'MISSING';
-
   const allOk = results.supabase === 'ok' &&
-    results.deepgram_key === 'set' &&
-    results.deepl_key    === 'set' &&
-    results.clerk_key    === 'set';
+    results.supabase_url      === 'set' &&
+    results.supabase_role_key === 'set' &&
+    results.deepgram_key      === 'set' &&
+    results.deepl_key         === 'set' &&
+    results.clerk_key         === 'set';
 
   return reply.code(allOk ? 200 : 503).send({ status: allOk ? 'ok' : 'degraded', ...results });
 });
