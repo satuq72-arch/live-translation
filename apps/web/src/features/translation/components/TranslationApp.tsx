@@ -85,8 +85,8 @@ export function TranslationApp() {
             <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '6px' }}>
               {line.original}
             </div>
-            <div style={{ color: '#e0deff', fontSize: '16px' }}>
-              {line.translated || (line.isFinal ? '...' : '')}
+            <div style={{ color: line.isFinal ? '#e0deff' : '#4b4870', fontSize: '16px', fontStyle: line.isFinal ? 'normal' : 'italic' }}>
+              {line.isFinal ? (line.translated || line.original) : '— wird erkannt …'}
             </div>
           </div>
         ))}

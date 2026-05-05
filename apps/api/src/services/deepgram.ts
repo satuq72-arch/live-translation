@@ -53,10 +53,10 @@ export const handleAudio = {
         return;
       }
 
-      let translated = '';
+      let translated = transcript;
       try {
         translated = await translate(transcript, event.sourceLang, event.targetLang);
-      } catch { /* send original if DeepL fails */ }
+      } catch { /* fallback: show original text */ }
 
       onResult({
         type:      'final',

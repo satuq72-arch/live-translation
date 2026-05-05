@@ -23,6 +23,8 @@ export function useTranslation(sourceLang: string, targetLang: string) {
   const streamRef                         = useRef<MediaStream | null>(null);
   const interimIdRef                      = useRef<string>('interim');
   const packetCountRef                    = useRef<number>(0);
+  const interimCountRef                   = useRef<number>(0);
+  const finalCountRef                     = useRef<number>(0);
 
   const wsBaseUrl = useMemo(() => {
     const u = new URL(process.env.NEXT_PUBLIC_API_URL!);
@@ -34,7 +36,9 @@ export function useTranslation(sourceLang: string, targetLang: string) {
 
   useEffect(() => {
     ws.onMessage((data: WSTranscriptEvent | WSErrorEvent) => {
-      setDebug(prev => `${prev ? prev + ' | ' : ''}msg:${data.type}`);
+      if (data.type === 'interim') interimCountRef.current += 1;
+      if (data.type === 'final')   finalCountRef.current   += 1;
+      setDebug(`pkts:${packetCountRef.current} interim:${interimCountRef.current} final:${finalCountRef.current}`);
       if (data.type === 'interim') {
         setLines(prev => {
           const rest = prev.filter(l => l.id !== interimIdRef.current);
@@ -76,6 +80,10 @@ export function useTranslation(sourceLang: string, targetLang: string) {
   const start = useCallback(async () => {
     setError(null);
     setLines([]);
+    setDebug('');
+    packetCountRef.current  = 0;
+    interimCountRef.current = 0;
+    finalCountRef.current   = 0;
 
     let stream:  MediaStream  | null = null;
     let context: AudioContext | null = null;
@@ -92,7 +100,6 @@ export function useTranslation(sourceLang: string, targetLang: string) {
 
       worklet.port.onmessage = (e) => {
         packetCountRef.current += 1;
-        setDebug(`packets sent: ${packetCountRef.current}`);
         ws.sendBinary(e.data);
       };
       source.connect(worklet);
