@@ -17,10 +17,12 @@ export function useTranslation(sourceLang: string, targetLang: string) {
   const [lines, setLines]                 = useState<TranscriptLine[]>([]);
   const [isRecording, setIsRec]           = useState(false);
   const [error, setError]                 = useState<string | null>(null);
+  const [debug, setDebug]                 = useState<string>('');
   const workletRef                        = useRef<AudioWorkletNode | null>(null);
   const contextRef                        = useRef<AudioContext | null>(null);
   const streamRef                         = useRef<MediaStream | null>(null);
   const interimIdRef                      = useRef<string>('interim');
+  const packetCountRef                    = useRef<number>(0);
 
   const wsBaseUrl = useMemo(() => {
     const u = new URL(process.env.NEXT_PUBLIC_API_URL!);
@@ -32,6 +34,7 @@ export function useTranslation(sourceLang: string, targetLang: string) {
 
   useEffect(() => {
     ws.onMessage((data: WSTranscriptEvent | WSErrorEvent) => {
+      setDebug(prev => `${prev ? prev + ' | ' : ''}msg:${data.type}`);
       if (data.type === 'interim') {
         setLines(prev => {
           const rest = prev.filter(l => l.id !== interimIdRef.current);
@@ -87,7 +90,11 @@ export function useTranslation(sourceLang: string, targetLang: string) {
       const source  = context.createMediaStreamSource(stream);
       const worklet = new AudioWorkletNode(context, 'pcm-processor');
 
-      worklet.port.onmessage = (e) => ws.sendBinary(e.data);
+      worklet.port.onmessage = (e) => {
+        packetCountRef.current += 1;
+        setDebug(`packets sent: ${packetCountRef.current}`);
+        ws.sendBinary(e.data);
+      };
       source.connect(worklet);
       worklet.connect(context.destination); // keep worklet in the audio graph
 
@@ -122,5 +129,5 @@ export function useTranslation(sourceLang: string, targetLang: string) {
     setIsRec(false);
   }, [ws]);
 
-  return { lines, isRecording, error, start, stop, wsStatus: ws.status };
+  return { lines, isRecording, error, start, stop, wsStatus: ws.status, debug };
 }

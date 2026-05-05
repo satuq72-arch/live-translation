@@ -7,7 +7,7 @@ import { SUPPORTED_LANGUAGES } from '@saas/shared';
 export function TranslationApp() {
   const [sourceLang, setSourceLang] = useState('de');
   const [targetLang, setTargetLang] = useState('en');
-  const { lines, isRecording, error, start, stop, wsStatus } = useTranslation(sourceLang, targetLang);
+  const { lines, isRecording, error, start, stop, wsStatus, debug } = useTranslation(sourceLang, targetLang);
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '32px', fontFamily: 'monospace' }}>
@@ -53,6 +53,13 @@ export function TranslationApp() {
       {wsStatus === 'error' && (
         <div style={{ color: '#ef4444', marginBottom: '16px', fontSize: '13px' }}>
           Verbindung fehlgeschlagen. Bitte Seite neu laden.
+        </div>
+      )}
+
+      {/* Debug Info */}
+      {(isRecording || debug) && (
+        <div style={{ color: '#6b7280', marginBottom: '12px', fontSize: '11px', fontFamily: 'monospace' }}>
+          ws:{wsStatus}{debug ? ` | ${debug}` : ''}
         </div>
       )}
 
