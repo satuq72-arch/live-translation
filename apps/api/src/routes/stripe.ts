@@ -1,12 +1,14 @@
-// apps/api/src/routes/stripe.ts — Schritt 5
 import type { FastifyPluginAsync } from 'fastify';
 import Stripe from 'stripe';
+import { getAuth } from '@clerk/fastify';
+import { requireAuth } from '../middleware/auth';
 import { supabase } from '@saas/core/db/client';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 const stripeRoutes: FastifyPluginAsync = async (app) => {
 
+  // ── Stripe Webhook ────────────────────────────────────────────────────────
   app.post('/webhook', async (req, reply) => {
     const sig = req.headers['stripe-signature'] as string;
     let event: Stripe.Event;
@@ -23,7 +25,30 @@ const stripeRoutes: FastifyPluginAsync = async (app) => {
 
     switch (event.type) {
 
-      // Rechnung bezahlt → Status updaten
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated': {
+        const sub = event.data.object as Stripe.Subscription;
+        const { data: user } = await supabase
+          .from('users')
+          .select('id')
+          .eq('stripe_customer_id', sub.customer as string)
+          .single();
+
+        if (user) {
+          await supabase.from('subscriptions').upsert(
+            {
+              user_id:            user.id,
+              stripe_sub_id:      sub.id,
+              stripe_item_id:     sub.items.data[0].id,
+              status:             sub.status,
+              current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+            },
+            { onConflict: 'stripe_sub_id' }
+          );
+        }
+        break;
+      }
+
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
         await supabase
@@ -33,7 +58,6 @@ const stripeRoutes: FastifyPluginAsync = async (app) => {
         break;
       }
 
-      // Zahlung fehlgeschlagen → User sperren
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
         await supabase
@@ -43,29 +67,78 @@ const stripeRoutes: FastifyPluginAsync = async (app) => {
         break;
       }
 
-      // Abo erstellt → in Supabase speichern
-      case 'customer.subscription.created': {
-        const sub  = event.data.object as Stripe.Subscription;
-        const { data: user } = await supabase
-          .from('users')
-          .select('id')
-          .eq('stripe_customer_id', sub.customer as string)
-          .single();
-
-        if (user) {
-          await supabase.from('subscriptions').insert({
-            user_id:        user.id,
-            stripe_sub_id:  sub.id,
-            stripe_item_id: sub.items.data[0].id,
-            status:         sub.status,
-            current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-          });
-        }
+      case 'customer.subscription.deleted': {
+        const sub = event.data.object as Stripe.Subscription;
+        await supabase
+          .from('subscriptions')
+          .update({ status: 'canceled' })
+          .eq('stripe_sub_id', sub.id);
         break;
       }
     }
 
     reply.send({ received: true });
+  });
+
+  // ── Create Checkout Session ───────────────────────────────────────────────
+  app.post('/create-checkout', { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = getAuth(req);
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, email, stripe_customer_id')
+      .eq('clerk_id', userId!)
+      .single();
+
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
+
+    let customerId = user.stripe_customer_id;
+    if (!customerId) {
+      const customer = await stripe.customers.create({ email: user.email });
+      customerId = customer.id;
+      await supabase
+        .from('users')
+        .update({ stripe_customer_id: customerId })
+        .eq('id', user.id);
+    }
+
+    const origin = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+
+    const session = await stripe.checkout.sessions.create({
+      customer:    customerId,
+      mode:        'subscription',
+      line_items:  [{ price: process.env.STRIPE_USAGE_PRICE_ID! }],
+      success_url: `${origin}/dashboard/billing?success=true`,
+      cancel_url:  `${origin}/dashboard/billing`,
+    });
+
+    return { url: session.url };
+  });
+
+  // ── Create Customer Portal Session ────────────────────────────────────────
+  app.post('/create-portal', { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = getAuth(req);
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('stripe_customer_id')
+      .eq('clerk_id', userId!)
+      .single();
+
+    if (!user?.stripe_customer_id) {
+      return reply.status(400).send({ error: 'No Stripe customer found' });
+    }
+
+    const origin = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+
+    const portal = await stripe.billingPortal.sessions.create({
+      customer:   user.stripe_customer_id,
+      return_url: `${origin}/dashboard/billing`,
+    });
+
+    return { url: portal.url };
   });
 };
 
