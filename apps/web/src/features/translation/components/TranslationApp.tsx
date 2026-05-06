@@ -68,7 +68,7 @@ export function TranslationApp() {
 
       {/* Transkript */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '60vh', overflowY: 'auto' }}>
-        {lines.map(line => (
+        {[...lines].reverse().map(line => (
           <div key={line.id} style={{
             padding: '16px', borderRadius: '10px', flexShrink: 0,
             background: line.isFinal ? '#0f0e1a' : '#111027',
