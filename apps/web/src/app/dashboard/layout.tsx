@@ -7,7 +7,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!userId) redirect('/auth/sign-in');
 
   return (
-    <div style={{ minHeight: '100vh', background: '#07061a' }}>
+    <div style={{ minHeight: '100vh' }}>
       <nav style={{
         display: 'flex', alignItems: 'center', gap: '24px',
         padding: '12px 32px', borderBottom: '1px solid #1f1d35',
