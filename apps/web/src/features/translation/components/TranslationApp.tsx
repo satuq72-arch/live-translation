@@ -67,18 +67,18 @@ export function TranslationApp() {
       )}
 
       {/* Transkript */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '60vh', overflowY: 'auto' }}>
         {lines.map(line => (
           <div key={line.id} style={{
-            padding: '16px', borderRadius: '10px',
-            background: line.isFinal ? '#0f0e1a' : '#07061a',
-            border: `1px solid ${line.isFinal ? '#1f1d35' : '#13112a'}`,
-            opacity: line.isFinal ? 1 : 0.7,
+            padding: '16px', borderRadius: '10px', flexShrink: 0,
+            background: line.isFinal ? '#0f0e1a' : '#111027',
+            border: `1px solid ${line.isFinal ? '#1f1d35' : '#1a1840'}`,
+            opacity: line.isFinal ? 1 : 0.75,
           }}>
             <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '6px' }}>
               {line.original}
             </div>
-            <div style={{ color: line.isFinal ? '#e0deff' : '#4b4870', fontSize: '16px', fontStyle: line.isFinal ? 'normal' : 'italic' }}>
+            <div style={{ color: line.isFinal ? '#e0deff' : '#6b60b0', fontSize: '16px', fontStyle: line.isFinal ? 'normal' : 'italic' }}>
               {line.isFinal ? (line.translated || line.original) : '— wird erkannt …'}
             </div>
           </div>
