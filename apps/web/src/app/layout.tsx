@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'YourSaaS',
-  description: 'Your SaaS description',
+  title: 'LiveTranslate — Echtzeit Sprachübersetzung',
+  description: 'Übersetze gesprochene Sprache in Echtzeit. Powered by Deepgram & DeepL.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

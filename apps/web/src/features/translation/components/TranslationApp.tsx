@@ -3,144 +3,151 @@ import { useState } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 import { SUPPORTED_LANGUAGES } from '@saas/shared';
 
-const selectStyle: React.CSSProperties = {
-  background: '#1a1840', border: '1px solid #2a2860', borderRadius: '8px',
-  color: '#e0deff', padding: '8px 12px', fontSize: '14px', cursor: 'pointer',
-  outline: 'none', appearance: 'none', WebkitAppearance: 'none',
-  paddingRight: '28px',
-  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center',
-};
-
 export function TranslationApp() {
   const [sourceLang, setSourceLang] = useState('de');
   const [targetLang, setTargetLang] = useState('en');
   const { lines, isRecording, error, start, stop, wsStatus } = useTranslation(sourceLang, targetLang);
 
-  return (
-    <div style={{
-      maxWidth: '720px', margin: '0 auto', padding: '48px 32px',
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-    }}>
+  const disabled = wsStatus === 'reconnecting';
 
-      {/* Sprachen */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '48px' }}>
-        <select value={sourceLang} onChange={e => setSourceLang(e.target.value)} disabled={isRecording} style={selectStyle}>
-          {Object.entries(SUPPORTED_LANGUAGES).map(([code, label]) => (
-            <option key={code} value={code}>{label}</option>
-          ))}
-        </select>
-        <span style={{ color: '#4b4870', fontSize: '18px' }}>→</span>
-        <select value={targetLang} onChange={e => setTargetLang(e.target.value)} disabled={isRecording} style={selectStyle}>
-          {Object.entries(SUPPORTED_LANGUAGES).map(([code, label]) => (
-            <option key={code} value={code}>{label}</option>
-          ))}
-        </select>
+  return (
+    <div className="flex min-h-[calc(100vh-56px)] flex-col items-center px-6 pt-16 pb-12">
+
+      {/* Radial glow background */}
+      <div
+        className="pointer-events-none fixed inset-0 -z-10 opacity-40"
+        style={{ background: 'radial-gradient(ellipse 80% 50% at 50% -10%, #3730a3 0%, transparent 70%)' }}
+      />
+
+      {/* Language selector */}
+      <div className="mb-12 flex items-center gap-3">
+        <LangSelect value={sourceLang} onChange={setSourceLang} disabled={isRecording} />
+        <span className="text-2xl text-dim select-none">→</span>
+        <LangSelect value={targetLang} onChange={setTargetLang} disabled={isRecording} />
       </div>
 
-      {/* Mikrofon */}
-      <div style={{ position: 'relative', marginBottom: '48px' }}>
+      {/* Mic button */}
+      <div className="relative mb-8 flex items-center justify-center">
+        {/* Pulse rings when recording */}
         {isRecording && (
-          <span style={{
-            position: 'absolute', inset: '-12px', borderRadius: '50%',
-            background: 'rgba(239,68,68,0.15)',
-            animation: 'pulse 1.5s ease-in-out infinite',
-          }} />
+          <>
+            <span
+              className="ring-1-animate absolute inset-0 rounded-full"
+              style={{ background: 'rgba(239,68,68,0.2)' }}
+            />
+            <span
+              className="ring-2-animate absolute inset-0 rounded-full"
+              style={{ background: 'rgba(239,68,68,0.15)' }}
+            />
+          </>
         )}
+
         <button
           onClick={isRecording ? stop : start}
-          disabled={wsStatus === 'reconnecting'}
+          disabled={disabled}
+          className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-full border-0 text-4xl transition-all duration-300 ${
+            disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+          } ${isRecording ? 'glow-recording' : 'glow-idle'}`}
           style={{
-            width: '88px', height: '88px', borderRadius: '50%', border: 'none',
             background: isRecording
-              ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-              : 'linear-gradient(135deg, #6366f1, #4f46e5)',
-            color: 'white', fontSize: '32px',
-            cursor: wsStatus === 'reconnecting' ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+              ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+              : 'linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)',
             boxShadow: isRecording
-              ? '0 0 0 0 rgba(239,68,68,0), 0 8px 32px rgba(239,68,68,0.4)'
-              : '0 8px 32px rgba(99,102,241,0.35)',
-            transition: 'all 0.25s ease',
-            opacity: wsStatus === 'reconnecting' ? 0.5 : 1,
-            position: 'relative',
+              ? '0 0 40px rgba(239,68,68,0.5), 0 8px 32px rgba(0,0,0,0.4)'
+              : '0 0 40px rgba(99,102,241,0.45), 0 8px 32px rgba(0,0,0,0.4)',
           }}
+          aria-label={isRecording ? 'Aufnahme stoppen' : 'Aufnahme starten'}
         >
           {isRecording ? '⏹' : '🎙'}
         </button>
       </div>
 
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.15); opacity: 0.6; }
-        }
-      `}</style>
+      {/* Status text */}
+      <p className="mb-10 text-sm font-medium text-dim fade-in">
+        {isRecording
+          ? '● Aufnahme läuft — spreche jetzt'
+          : wsStatus === 'reconnecting'
+          ? '↻ Verbinde neu…'
+          : wsStatus === 'error'
+          ? '✕ Verbindungsfehler — Seite neu laden'
+          : 'Klicke auf das Mikrofon und fange an zu sprechen'}
+      </p>
 
-      {/* Status */}
-      <div style={{ width: '100%', maxWidth: '600px' }}>
-        {wsStatus === 'reconnecting' && (
-          <div style={{
-            color: '#fbbf24', marginBottom: '16px', fontSize: '13px',
-            padding: '10px 14px', background: '#1c1700', borderRadius: '8px',
-            border: '1px solid #2c2200',
-          }}>
-            Verbindung unterbrochen — verbinde neu…
-          </div>
-        )}
-        {wsStatus === 'error' && (
-          <div style={{
-            color: '#f87171', marginBottom: '16px', fontSize: '13px',
-            padding: '10px 14px', background: '#1f0a0a', borderRadius: '8px',
-            border: '1px solid #3a1010',
-          }}>
-            Verbindung fehlgeschlagen. Bitte Seite neu laden.
-          </div>
-        )}
-        {error && (
-          <div style={{
-            color: '#f87171', marginBottom: '16px', fontSize: '13px',
-            padding: '10px 14px', background: '#1f0a0a', borderRadius: '8px',
-            border: '1px solid #3a1010',
-          }}>
-            {error}
-          </div>
-        )}
+      {/* Errors */}
+      {error && (
+        <div className="mb-6 w-full max-w-xl rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-400 fade-in">
+          {error}
+        </div>
+      )}
 
-        {/* Hint wenn idle */}
-        {!isRecording && lines.length === 0 && (
-          <p style={{ color: '#4b4870', fontSize: '14px', textAlign: 'center', margin: '0' }}>
-            Klicke auf das Mikrofon und fange an zu sprechen.
-          </p>
-        )}
+      {/* Transcript */}
+      {lines.length > 0 && (
+        <div className="flex w-full max-w-xl flex-col gap-3" style={{ maxHeight: '52vh', overflowY: 'auto' }}>
+          {[...lines].reverse().map(line => (
+            <TranscriptCard key={line.id} line={line} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
-        {/* Transkript */}
-        {lines.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '55vh', overflowY: 'auto' }}>
-            {[...lines].reverse().map(line => (
-              <div key={line.id} style={{
-                padding: '14px 16px', borderRadius: '12px', flexShrink: 0,
-                background: line.isFinal ? '#131130' : '#0f0d28',
-                border: `1px solid ${line.isFinal ? '#232048' : '#1a1840'}`,
-                opacity: line.isFinal ? 1 : 0.8,
-              }}>
-                <div style={{ color: '#4b4870', fontSize: '11px', marginBottom: '5px', fontFamily: 'monospace' }}>
-                  {line.original}
-                </div>
-                <div style={{
-                  color: line.isFinal ? '#c4b5fd' : '#5b508a',
-                  fontSize: '15px', lineHeight: '1.5',
-                  fontStyle: line.isFinal ? 'normal' : 'italic',
-                  fontFamily: 'monospace',
-                }}>
-                  {line.isFinal ? (line.translated || line.original) : '— wird erkannt …'}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+/* ── Sub-components ──────────────────────────────────────── */
+
+function LangSelect({
+  value, onChange, disabled,
+}: {
+  value: string; onChange: (v: string) => void; disabled: boolean;
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+        className="appearance-none cursor-pointer rounded-lg border border-[#1e1b38] bg-[#0f0d20] py-2 pl-3 pr-8 text-sm font-medium text-[#c4b5fd] outline-none transition hover:border-[#3730a3] disabled:cursor-default disabled:opacity-60"
+      >
+        {Object.entries(SUPPORTED_LANGUAGES).map(([code, label]) => (
+          <option key={code} value={code} className="bg-[#0f0d20]">{label}</option>
+        ))}
+      </select>
+      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-dim">▼</span>
+    </div>
+  );
+}
+
+function TranscriptCard({ line }: { line: { id: string; original: string; translated: string; isFinal: boolean } }) {
+  return (
+    <div
+      className={`slide-in flex-shrink-0 rounded-2xl border px-5 py-4 transition-all ${
+        line.isFinal
+          ? 'border-[#1e1b38] bg-[#0f0d20]'
+          : 'border-[#17153a] bg-[#0c0b1e] opacity-80'
+      }`}
+    >
+      {/* Original */}
+      <p className="mb-2 font-mono text-xs tracking-wide text-dim">
+        {line.original}
+      </p>
+
+      {/* Translation */}
+      <p
+        className={`font-mono text-base leading-relaxed ${
+          line.isFinal ? 'text-[#c4b5fd]' : 'italic text-[#4b4870]'
+        }`}
+      >
+        {line.isFinal
+          ? (line.translated || line.original)
+          : '— wird erkannt …'}
+      </p>
+
+      {/* Final badge */}
+      {line.isFinal && (
+        <div className="mt-3 flex items-center gap-1.5">
+          <span className="h-1 w-1 rounded-full bg-violet-500" />
+          <span className="text-[10px] font-medium uppercase tracking-widest text-dim">übersetzt</span>
+        </div>
+      )}
     </div>
   );
 }
