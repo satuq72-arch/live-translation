@@ -6,7 +6,7 @@ import './globals.css';
 const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], display: 'swap', variable: '--font-jakarta' });
 
 export const metadata: Metadata = {
-  title: 'LiveTranslate — Echtzeit Sprachübersetzung',
+  title: 'LiveTranslate v2 ✓',
   description: 'Übersetze gesprochene Sprache in Echtzeit. Powered by Deepgram & DeepL.',
 };
 
