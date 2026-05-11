@@ -29,18 +29,19 @@ export function TranslationApp() {
       <div className="relative z-10 mb-6 flex items-center justify-center">
         {isRecording && (
           <>
-            <span className="animate-ring-out absolute inset-0 rounded-full bg-red-500/20" />
-            <span className="animate-ring-out-2 absolute inset-0 rounded-full bg-red-500/15" />
+            <span className="motion-safe:animate-ring-out absolute inset-0 rounded-full bg-red-500/20" />
+            <span className="motion-safe:animate-ring-out-2 absolute inset-0 rounded-full bg-red-500/15" />
           </>
         )}
         <button
           onClick={isRecording ? stop : start}
           disabled={wsStatus === 'reconnecting'}
           className={[
-            'relative z-10 flex h-24 w-24 items-center justify-center rounded-full text-4xl',
-            'border-0 outline-none transition-all duration-300',
+            'relative z-10 flex h-24 w-24 items-center justify-center rounded-full',
+            'border-0 outline-none ring-offset-2 ring-offset-page transition-all duration-300',
+            'focus-visible:ring-2 focus-visible:ring-indigo-400',
             wsStatus === 'reconnecting' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
-            !isRecording && 'animate-glow-idle',
+            !isRecording && 'motion-safe:animate-glow-idle',
           ].filter(Boolean).join(' ')}
           style={{
             background: isRecording
@@ -52,7 +53,18 @@ export function TranslationApp() {
           }}
           aria-label={isRecording ? 'Aufnahme stoppen' : 'Aufnahme starten'}
         >
-          {isRecording ? '⏹' : '🎙'}
+          {isRecording ? (
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-9 w-9 text-white" aria-hidden>
+              <rect x="5" y="5" width="14" height="14" rx="2.5" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-9 w-9 text-white" aria-hidden>
+              <rect x="9" y="2" width="6" height="13" rx="3" />
+              <path d="M5 10a7 7 0 0 0 14 0" />
+              <line x1="12" y1="17" x2="12" y2="22" />
+              <line x1="8" y1="22" x2="16" y2="22" />
+            </svg>
+          )}
         </button>
       </div>
 
@@ -66,7 +78,7 @@ export function TranslationApp() {
 
       {/* Error */}
       {error && (
-        <div className="animate-fade-up relative z-10 mb-6 w-full max-w-xl rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-400">
+        <div className="motion-safe:animate-fade-up relative z-10 mb-6 w-full max-w-xl rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-400">
           {error}
         </div>
       )}
@@ -113,21 +125,23 @@ function TranscriptCard({ line }: {
 }) {
   return (
     <div className={[
-      'animate-slide-in flex-shrink-0 rounded-2xl border px-5 py-4',
+      'motion-safe:animate-slide-in flex-shrink-0 rounded-2xl border px-5 py-4 backdrop-blur-sm transition-opacity duration-300',
       line.isFinal
-        ? 'border-rim bg-surface'
-        : 'border-raised bg-raised opacity-75',
+        ? 'border-white/10 bg-white/[0.04]'
+        : 'border-white/5 bg-white/[0.02] opacity-60',
     ].join(' ')}>
       <p className="mb-1.5 font-mono text-xs text-dim">{line.original}</p>
       <p className={[
-        'font-mono text-base leading-relaxed',
+        'text-base leading-relaxed',
         line.isFinal ? 'text-violet-200' : 'italic text-dim',
       ].join(' ')}>
         {line.isFinal ? (line.translated || line.original) : '— wird erkannt …'}
       </p>
       {line.isFinal && (
         <div className="mt-3 flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+          <svg viewBox="0 0 8 8" fill="none" className="h-2 w-2 text-violet-500" aria-hidden>
+            <circle cx="4" cy="4" r="4" fill="currentColor" />
+          </svg>
           <span className="text-[10px] font-semibold uppercase tracking-widest text-dim">übersetzt</span>
         </div>
       )}

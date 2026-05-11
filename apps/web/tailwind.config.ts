@@ -4,6 +4,9 @@ const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Plus Jakarta Sans', 'sans-serif'],
+      },
       colors: {
         page:    '#07061a',
         surface: '#0f0d20',

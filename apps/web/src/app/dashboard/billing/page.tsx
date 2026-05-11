@@ -77,8 +77,12 @@ function BillingContent() {
 
       {/* Success banner */}
       {justSubscribed && (
-        <div className="animate-fade-up mb-4 flex items-center gap-3 rounded-2xl border border-emerald-800/40 bg-emerald-950/40 px-5 py-4">
-          <span className="text-lg">🎉</span>
+        <div className="motion-safe:animate-fade-up mb-4 flex items-center gap-3 rounded-2xl border border-emerald-800/40 bg-emerald-950/40 px-5 py-4">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-emerald-400" aria-hidden>
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
           <div>
             <p className="text-sm font-semibold text-emerald-400">Willkommen im Pro Plan!</p>
             <p className="text-xs text-emerald-700">Unbegrenzte Übersetzungen sind jetzt aktiv.</p>
