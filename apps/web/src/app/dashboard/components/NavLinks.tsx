@@ -9,25 +9,23 @@ const links = [
 
 export function NavLinks() {
   const pathname = usePathname();
-
   return (
-    <div className="flex gap-1">
+    <nav className="flex gap-1">
       {links.map(({ href, label }) => {
         const active = pathname.startsWith(href);
         return (
           <Link
             key={href}
             href={href}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              active
-                ? 'bg-white/10 text-white'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
-            }`}
+            className={[
+              'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              active ? 'bg-indigo-600/20 text-indigo-300' : 'text-muted hover:bg-white/5 hover:text-prose',
+            ].join(' ')}
           >
             {label}
           </Link>
         );
       })}
-    </div>
+    </nav>
   );
 }

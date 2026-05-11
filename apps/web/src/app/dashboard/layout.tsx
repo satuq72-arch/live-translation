@@ -9,11 +9,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen bg-page">
-      {/* Nav */}
-      <header className="sticky top-0 z-20 border-b border-dim bg-[#0b0a1e]/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+      <header className="sticky top-0 z-20 border-b border-rim bg-page/90 backdrop-blur-sm">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
           <div className="flex items-center gap-6">
-            <span className="text-base font-bold tracking-tight text-violet-300">
+            <span className="text-sm font-bold tracking-tight text-violet-300">
               🎙 LiveTranslate
             </span>
             <NavLinks />
@@ -21,7 +20,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <UserButton afterSignOutUrl="/auth/sign-in" />
         </div>
       </header>
-
       <main>{children}</main>
     </div>
   );
