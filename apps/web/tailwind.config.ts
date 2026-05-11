@@ -37,6 +37,10 @@ const config: Config = {
           '0%, 100%': { boxShadow: '0 0 32px rgba(99,102,241,.4), 0 8px 32px rgba(0,0,0,.4)' },
           '50%':       { boxShadow: '0 0 52px rgba(99,102,241,.7), 0 8px 40px rgba(0,0,0,.4)' },
         },
+        'wave': {
+          '0%, 100%': { height: '3px' },
+          '50%':       { height: '18px' },
+        },
       },
       animation: {
         'ring-out':   'ring-out 1.6s ease-out infinite',
@@ -44,6 +48,7 @@ const config: Config = {
         'slide-in':   'slide-in 0.28s ease forwards',
         'fade-up':    'fade-up 0.3s ease forwards',
         'glow-idle':  'glow-idle 3s ease-in-out infinite',
+        'wave':       'wave 0.9s ease-in-out infinite',
       },
     },
   },
