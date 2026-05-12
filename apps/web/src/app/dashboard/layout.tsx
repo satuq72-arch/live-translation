@@ -9,10 +9,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen bg-page">
-      <header className="sticky top-0 z-20 border-b border-rim bg-page/90 backdrop-blur-sm">
+      <header className="sticky top-0 z-20 border-b border-rim bg-page/80 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-          <div className="flex items-center gap-6">
-            <span className="text-sm font-bold tracking-tight text-violet-300">
+          <div className="flex items-center gap-5">
+            <span
+              className="text-sm font-bold tracking-tight"
+              style={{ background: 'linear-gradient(90deg,#a5b4fc,#c4b5fd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+            >
               LiveTranslate
             </span>
             <NavLinks />
