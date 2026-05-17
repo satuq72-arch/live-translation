@@ -1,3 +1,6 @@
+/* fallback — works without PostCSS */
+html, body { background: #07061a; color: #e0deff; }
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
