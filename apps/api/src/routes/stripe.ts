@@ -6,6 +6,12 @@ import { supabase } from '@saas/core/db/client';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
+function planTypeFromSub(sub: Stripe.Subscription): 'monthly-flat' | 'usage-based' {
+  return sub.items.data[0]?.price.id === process.env.STRIPE_MONTHLY_PRICE_ID
+    ? 'monthly-flat'
+    : 'usage-based';
+}
+
 const stripeRoutes: FastifyPluginAsync = async (app) => {
 
   // ── Stripe Webhook ────────────────────────────────────────────────────────
@@ -40,6 +46,7 @@ const stripeRoutes: FastifyPluginAsync = async (app) => {
               user_id:            user.id,
               stripe_sub_id:      sub.id,
               stripe_item_id:     sub.items.data[0].id,
+              plan_type:          planTypeFromSub(sub),
               status:             sub.status,
               current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
             },
@@ -80,19 +87,15 @@ const stripeRoutes: FastifyPluginAsync = async (app) => {
     reply.send({ received: true });
   });
 
-  // ── Create Checkout Session ───────────────────────────────────────────────
-  app.post('/create-checkout', { preHandler: requireAuth }, async (req, reply) => {
-    const { userId } = getAuth(req);
-
+  // ── Shared helper: get or create Stripe customer ──────────────────────────
+  async function getOrCreateCustomer(userId: string) {
     const { data: user } = await supabase
       .from('users')
       .select('id, email, stripe_customer_id')
-      .eq('clerk_id', userId!)
+      .eq('clerk_id', userId)
       .single();
 
-    if (!user) {
-      return reply.status(404).send({ error: 'User not found' });
-    }
+    if (!user) return null;
 
     let customerId = user.stripe_customer_id;
     if (!customerId) {
@@ -104,12 +107,38 @@ const stripeRoutes: FastifyPluginAsync = async (app) => {
         .eq('id', user.id);
     }
 
-    const origin = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+    return { user, customerId };
+  }
 
+  // ── Create Checkout — usage-based (€0.05 / min) ───────────────────────────
+  app.post('/create-checkout', { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = getAuth(req);
+    const result = await getOrCreateCustomer(userId!);
+    if (!result) return reply.status(404).send({ error: 'User not found' });
+
+    const origin = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
     const session = await stripe.checkout.sessions.create({
-      customer:    customerId,
+      customer:    result.customerId,
       mode:        'subscription',
       line_items:  [{ price: process.env.STRIPE_USAGE_PRICE_ID! }],
+      success_url: `${origin}/dashboard/billing?success=true`,
+      cancel_url:  `${origin}/dashboard/billing`,
+    });
+
+    return { url: session.url };
+  });
+
+  // ── Create Checkout — monthly flat (€9 / month) ───────────────────────────
+  app.post('/create-checkout-monthly', { preHandler: requireAuth }, async (req, reply) => {
+    const { userId } = getAuth(req);
+    const result = await getOrCreateCustomer(userId!);
+    if (!result) return reply.status(404).send({ error: 'User not found' });
+
+    const origin = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const session = await stripe.checkout.sessions.create({
+      customer:    result.customerId,
+      mode:        'subscription',
+      line_items:  [{ price: process.env.STRIPE_MONTHLY_PRICE_ID! }],
       success_url: `${origin}/dashboard/billing?success=true`,
       cancel_url:  `${origin}/dashboard/billing`,
     });
@@ -132,7 +161,6 @@ const stripeRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const origin = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
-
     const portal = await stripe.billingPortal.sessions.create({
       customer:   user.stripe_customer_id,
       return_url: `${origin}/dashboard/billing`,

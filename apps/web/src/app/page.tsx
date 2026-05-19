@@ -210,13 +210,14 @@ export default async function RootPage() {
 
       {/* ── Pricing ── */}
       <section className="px-6 py-20">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-4xl">
           <div className="mb-12 text-center">
             <p className="mb-2 text-xs font-bold uppercase tracking-[0.15em] text-orange-400">Pricing</p>
             <h2 className="mb-2 text-2xl font-bold tracking-tight text-prose">Simple, honest pricing</h2>
-            <p className="text-sm text-muted">Start free. Pay only for what you use.</p>
+            <p className="text-sm text-muted">Start free. Choose how you pay.</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
+
             {/* Free */}
             <div className="rounded-2xl border border-rim bg-raised p-7">
               <p className="mb-1 text-xs font-bold uppercase tracking-widest text-dim">Free</p>
@@ -227,7 +228,7 @@ export default async function RootPage() {
               <ul className="mb-7 space-y-3 text-sm text-muted">
                 {['30 free minutes','19 languages','Real-time translation','Copy transcripts'].map(f => (
                   <li key={f} className="flex items-center gap-2.5">
-                    <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4 shrink-0 text-indigo-400" aria-hidden>
+                    <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4 shrink-0 text-dim" aria-hidden>
                       <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207z" clipRule="evenodd" />
                     </svg>
                     {f}
@@ -236,28 +237,29 @@ export default async function RootPage() {
               </ul>
               <Link
                 href={userId ? '/dashboard/translate' : '/auth/sign-up'}
-                className="block w-full rounded-xl border border-rim py-3 text-center text-sm font-semibold text-prose transition-all hover:border-indigo-700/50 hover:bg-indigo-950/20"
+                className="block w-full rounded-xl border border-rim py-2.5 text-center text-sm font-semibold text-prose transition-all hover:border-indigo-700/50 hover:bg-indigo-950/20"
               >
                 {userId ? 'Open app' : 'Get started free'}
               </Link>
             </div>
 
-            {/* Pro */}
-            <div className="relative overflow-hidden rounded-2xl border border-indigo-600/25 bg-indigo-950/15 p-7 shadow-[0_0_48px_rgba(99,102,241,0.1)]">
-              <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-25 blur-3xl"
-                style={{ background: 'radial-gradient(circle, #f97316, transparent)' }} />
+            {/* Monthly flat — highlighted */}
+            <div className="relative overflow-hidden rounded-2xl border border-indigo-600/30 bg-indigo-950/15 p-7 shadow-[0_0_48px_rgba(99,102,241,0.12)]">
+              <div aria-hidden className="pointer-events-none absolute -left-8 -top-8 h-36 w-36 rounded-full opacity-20 blur-3xl"
+                style={{ background: 'radial-gradient(circle, #6366f1, transparent)' }} />
               <div className="mb-1 flex items-center gap-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-indigo-400">Pro</p>
-                <span className="rounded-full bg-indigo-900/60 px-2 py-0.5 text-[10px] font-semibold text-indigo-300 ring-1 ring-indigo-800/40">Most popular</span>
+                <p className="text-xs font-bold uppercase tracking-widest text-indigo-400">Monthly</p>
+                <span className="rounded-full bg-indigo-900/60 px-2 py-0.5 text-[10px] font-semibold text-indigo-300 ring-1 ring-indigo-800/40">Best value</span>
               </div>
-              <div className="mb-5 flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-prose">€0.05</span>
-                <span className="text-sm text-muted">/ minute</span>
+              <div className="mb-1 flex items-baseline gap-1">
+                <span className="text-4xl font-bold text-prose">€9</span>
+                <span className="text-sm text-muted">/ month</span>
               </div>
+              <p className="mb-5 text-[11px] text-dim">Unlimited minutes included</p>
               <ul className="mb-7 space-y-3 text-sm text-muted">
                 {['Unlimited minutes','19 languages','Real-time translation','Copy transcripts','Priority support'].map(f => (
                   <li key={f} className="flex items-center gap-2.5">
-                    <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4 shrink-0 text-cyan-400" aria-hidden>
+                    <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4 shrink-0 text-indigo-400" aria-hidden>
                       <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207z" clipRule="evenodd" />
                     </svg>
                     {f}
@@ -266,13 +268,43 @@ export default async function RootPage() {
               </ul>
               <Link
                 href={userId ? '/dashboard/billing' : '/auth/sign-up'}
-                className="relative block w-full rounded-xl py-3 text-center text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-95"
-                style={{ background: 'linear-gradient(135deg,#f97316,#ea580c)', boxShadow: '0 4px 20px rgba(249,115,22,.3)' }}
+                className="relative block w-full rounded-xl py-2.5 text-center text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-95"
+                style={{ background: 'linear-gradient(135deg,#6366f1,#7c3aed)', boxShadow: '0 4px 20px rgba(99,102,241,.35)' }}
               >
-                {userId ? 'Upgrade to Pro' : 'Start with Pro'}
+                {userId ? 'Switch to Monthly' : 'Start Monthly'}
               </Link>
             </div>
+
+            {/* Pay-per-minute */}
+            <div className="relative overflow-hidden rounded-2xl border border-orange-900/25 bg-orange-950/8 p-7">
+              <div aria-hidden className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full opacity-15 blur-3xl"
+                style={{ background: 'radial-gradient(circle, #f97316, transparent)' }} />
+              <p className="mb-1 text-xs font-bold uppercase tracking-widest text-orange-400">Pay as you go</p>
+              <div className="mb-1 flex items-baseline gap-1">
+                <span className="text-4xl font-bold text-prose">€0.05</span>
+                <span className="text-sm text-muted">/ minute</span>
+              </div>
+              <p className="mb-5 text-[11px] text-dim">Only pay for what you use</p>
+              <ul className="mb-7 space-y-3 text-sm text-muted">
+                {['No monthly commitment','19 languages','Real-time translation','Copy transcripts','Priority support'].map(f => (
+                  <li key={f} className="flex items-center gap-2.5">
+                    <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4 shrink-0 text-orange-500/70" aria-hidden>
+                      <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207z" clipRule="evenodd" />
+                    </svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href={userId ? '/dashboard/billing' : '/auth/sign-up'}
+                className="relative block w-full rounded-xl border border-orange-800/30 py-2.5 text-center text-sm font-semibold text-orange-300 transition-all hover:bg-orange-950/20 active:scale-95"
+              >
+                {userId ? 'Switch to Pay-per-minute' : 'Start Pay-per-minute'}
+              </Link>
+            </div>
+
           </div>
+          <p className="mt-4 text-center text-xs text-dim">Monthly plan pays off after ~180 minutes/month compared to pay-as-you-go.</p>
         </div>
       </section>
 

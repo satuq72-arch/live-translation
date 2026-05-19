@@ -7,6 +7,7 @@ interface BillingStatus {
   freeTierRemaining: number;
   freeTierUsed:      boolean;
   isSubscribed:      boolean;
+  planType:          'monthly-flat' | 'usage-based' | null;
   periodEnd:         string | null;
   unitsUsed:         number;
   estimatedCost:     number;
@@ -96,8 +97,8 @@ function BillingContent() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-semibold text-emerald-300">Welcome to Pro!</p>
-              <p className="mt-0.5 text-xs text-emerald-700">Unlimited translations are now active.</p>
+              <p className="text-sm font-semibold text-emerald-300">Subscription active!</p>
+              <p className="mt-0.5 text-xs text-emerald-700">You now have full access to LiveTranslate.</p>
             </div>
           </div>
         )}
@@ -111,7 +112,6 @@ function BillingContent() {
 
         {/* Plan card */}
         <div className="mb-4 overflow-hidden rounded-2xl border border-rim bg-raised">
-          {/* Card header */}
           <div className="border-b border-rim bg-surface/60 px-5 py-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-dim">Current Plan</p>
           </div>
@@ -119,9 +119,19 @@ function BillingContent() {
             {status?.isSubscribed ? (
               <SubscribedPlan status={status} working={working} onPortal={() => callApi('/stripe/create-portal')} />
             ) : status?.freeTierUsed ? (
-              <LimitReachedPlan working={working} onUpgrade={() => callApi('/stripe/create-checkout')} />
+              <LimitReachedPlan
+                working={working}
+                onUpgradeMonthly={() => callApi('/stripe/create-checkout-monthly')}
+                onUpgradeUsage={() => callApi('/stripe/create-checkout')}
+              />
             ) : (
-              <FreePlan freeRemaining={freeRemaining} freePct={freePct} working={working} onUpgrade={() => callApi('/stripe/create-checkout')} />
+              <FreePlan
+                freeRemaining={freeRemaining}
+                freePct={freePct}
+                working={working}
+                onUpgradeMonthly={() => callApi('/stripe/create-checkout-monthly')}
+                onUpgradeUsage={() => callApi('/stripe/create-checkout')}
+              />
             )}
           </div>
         </div>
@@ -146,16 +156,21 @@ function BillingContent() {
                 <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM8.798 7.45c.512-.67 1.135-1.2 1.763-1.2.628 0 1.25.53 1.762 1.2.51.667.927 1.587 1.103 2.55H7.695c.176-.963.594-1.883 1.103-2.55zM7.5 11.5c0-.169.01-.336.027-.5h4.946c.017.164.027.331.027.5s-.01.336-.027.5H7.527A6.25 6.25 0 0 1 7.5 11.5zm.195 2c.176.963.594 1.883 1.103 2.55.512.67 1.135 1.2 1.763 1.2.628 0 1.25-.53 1.762-1.2.51-.667.927-1.587 1.103-2.55H7.695z" clipRule="evenodd" />
               </svg>
               <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-dim">
-                {status?.isSubscribed ? 'Cost This Month' : 'Pro Price'}
+                {status?.isSubscribed && status.planType === 'monthly-flat' ? 'Monthly Plan' :
+                 status?.isSubscribed ? 'Cost This Month' : 'Pro Price'}
               </p>
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-2xl font-bold tracking-tight text-prose">
-                {status?.isSubscribed
+                {status?.isSubscribed && status.planType === 'monthly-flat'
+                  ? '€9'
+                  : status?.isSubscribed
                   ? `€${(status.estimatedCost ?? 0).toFixed(2)}`
-                  : '€0.05'}
+                  : '€9'}
               </span>
-              {!status?.isSubscribed && <span className="text-sm text-muted">/ min</span>}
+              {(!status?.isSubscribed || status.planType === 'monthly-flat') && (
+                <span className="text-sm text-muted">/ month</span>
+              )}
             </div>
           </div>
         </div>
@@ -179,15 +194,16 @@ function BillingContent() {
 function SubscribedPlan({ status, working, onPortal }: {
   status: BillingStatus; working: boolean; onPortal: () => void;
 }) {
+  const isMonthly = status.planType === 'monthly-flat';
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
         <div className="mb-1 flex items-center gap-2.5">
           <span
             className="text-xl font-bold tracking-tight"
-            style={{ background: 'linear-gradient(135deg,#a5b4fc,#c4b5fd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+            style={{ background: isMonthly ? 'linear-gradient(135deg,#34d399,#06b6d4)' : 'linear-gradient(135deg,#a5b4fc,#c4b5fd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
           >
-            Pro
+            {isMonthly ? 'Monthly' : 'Pay-per-minute'}
           </span>
           <span className="rounded-full border border-emerald-800/40 bg-emerald-950/40 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400">
             active
@@ -207,13 +223,15 @@ function SubscribedPlan({ status, working, onPortal }: {
         disabled={working}
         className="cursor-pointer whitespace-nowrap rounded-xl border border-rim px-4 py-2 text-sm font-medium text-violet-300 transition-all hover:border-indigo-600/50 hover:bg-indigo-950/20 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {working ? 'Opening…' : 'Manage subscription →'}
+        {working ? 'Opening…' : 'Manage →'}
       </button>
     </div>
   );
 }
 
-function LimitReachedPlan({ working, onUpgrade }: { working: boolean; onUpgrade: () => void }) {
+function LimitReachedPlan({ working, onUpgradeMonthly, onUpgradeUsage }: {
+  working: boolean; onUpgradeMonthly: () => void; onUpgradeUsage: () => void;
+}) {
   return (
     <div>
       <div className="mb-1 flex items-center gap-2.5">
@@ -223,13 +241,14 @@ function LimitReachedPlan({ working, onUpgrade }: { working: boolean; onUpgrade:
         </span>
       </div>
       <p className="mb-5 text-sm text-muted">Your 30 free minutes have been used up.</p>
-      <UpgradeButton working={working} onUpgrade={onUpgrade} />
+      <UpgradeOptions working={working} onUpgradeMonthly={onUpgradeMonthly} onUpgradeUsage={onUpgradeUsage} />
     </div>
   );
 }
 
-function FreePlan({ freeRemaining, freePct, working, onUpgrade }: {
-  freeRemaining: number; freePct: number; working: boolean; onUpgrade: () => void;
+function FreePlan({ freeRemaining, freePct, working, onUpgradeMonthly, onUpgradeUsage }: {
+  freeRemaining: number; freePct: number; working: boolean;
+  onUpgradeMonthly: () => void; onUpgradeUsage: () => void;
 }) {
   return (
     <div>
@@ -250,24 +269,42 @@ function FreePlan({ freeRemaining, freePct, working, onUpgrade }: {
           }}
         />
       </div>
-      <UpgradeButton working={working} onUpgrade={onUpgrade} />
+      <UpgradeOptions working={working} onUpgradeMonthly={onUpgradeMonthly} onUpgradeUsage={onUpgradeUsage} />
     </div>
   );
 }
 
-function UpgradeButton({ working, onUpgrade }: { working: boolean; onUpgrade: () => void }) {
+function UpgradeOptions({ working, onUpgradeMonthly, onUpgradeUsage }: {
+  working: boolean; onUpgradeMonthly: () => void; onUpgradeUsage: () => void;
+}) {
   return (
-    <button
-      onClick={onUpgrade}
-      disabled={working}
-      className="cursor-pointer rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-      style={{
-        background: 'linear-gradient(135deg,#f97316,#ea580c)',
-        boxShadow: '0 4px 20px rgba(249,115,22,.35)',
-      }}
-    >
-      {working ? 'Redirecting…' : 'Upgrade to Pro — €0.05 / min'}
-    </button>
+    <div className="flex flex-col gap-2.5">
+      {/* Monthly flat */}
+      <button
+        onClick={onUpgradeMonthly}
+        disabled={working}
+        className="cursor-pointer rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        style={{
+          background: 'linear-gradient(135deg,#6366f1,#7c3aed)',
+          boxShadow: '0 4px 20px rgba(99,102,241,.35)',
+        }}
+      >
+        {working ? 'Redirecting…' : 'Monthly plan — €9 / month'}
+      </button>
+
+      {/* Usage-based */}
+      <button
+        onClick={onUpgradeUsage}
+        disabled={working}
+        className="cursor-pointer rounded-xl border border-rim px-5 py-2.5 text-sm font-semibold text-prose transition-all hover:border-orange-700/50 hover:bg-orange-950/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {working ? 'Redirecting…' : 'Pay as you go — €0.05 / min'}
+      </button>
+
+      <p className="text-center text-[11px] text-dim">
+        Monthly plan saves money after ~180 min/month
+      </p>
+    </div>
   );
 }
 

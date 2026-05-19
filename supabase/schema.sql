@@ -18,6 +18,7 @@ CREATE TABLE subscriptions (
   user_id              UUID REFERENCES users(id) ON DELETE CASCADE,
   stripe_sub_id        TEXT UNIQUE NOT NULL,
   stripe_item_id       TEXT NOT NULL,
+  plan_type            TEXT NOT NULL DEFAULT 'usage-based',
   status               TEXT NOT NULL DEFAULT 'active',
   current_period_end   TIMESTAMP WITH TIME ZONE,
   created_at           TIMESTAMP WITH TIME ZONE DEFAULT NOW()

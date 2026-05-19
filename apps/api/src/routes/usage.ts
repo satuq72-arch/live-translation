@@ -54,7 +54,7 @@ const usageRoutes: FastifyPluginAsync = async (app) => {
     const [{ data: sub }, { data: logs }] = await Promise.all([
       supabase
         .from('subscriptions')
-        .select('status, current_period_end')
+        .select('status, current_period_end, plan_type')
         .eq('user_id', user.id)
         .eq('status', 'active')
         .single(),
@@ -70,6 +70,7 @@ const usageRoutes: FastifyPluginAsync = async (app) => {
       freeTierRemaining: user.free_tier_remaining,
       freeTierUsed:      user.free_tier_used,
       isSubscribed:      !!sub,
+      planType:          sub?.plan_type ?? null,
       periodEnd:         sub?.current_period_end ?? null,
       unitsUsed:         Math.round(unitsUsed * 10) / 10,
       estimatedCost:     Math.round(unitsUsed * BILLING_CONFIG.unitPrice * 100) / 100,
