@@ -20,35 +20,35 @@ export function TranslationApp() {
   return (
     <div className="flex min-h-[calc(100vh-56px)] flex-col bg-page">
 
-      {/* ── Control strip ── */}
-      <div className="relative border-b border-rim bg-surface transition-colors duration-700">
-        {/* Ambient gradient — shifts red while recording */}
+      {/* ── Control section ── */}
+      <div className="relative border-b border-rim bg-surface">
+        {/* Aurora gradient — multi-color, shifts on recording */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 transition-opacity duration-700"
+          className="pointer-events-none absolute inset-0 transition-all duration-700"
           style={{
             background: isRecording
-              ? 'radial-gradient(ellipse 80% 130% at 50% -10%, rgba(239,68,68,0.07) 0%, transparent 70%)'
-              : 'radial-gradient(ellipse 80% 130% at 50% -10%, rgba(99,102,241,0.09) 0%, transparent 70%)',
+              ? 'radial-gradient(ellipse 80% 140% at 20% -20%, rgba(239,68,68,0.10) 0%, transparent 55%), radial-gradient(ellipse 60% 100% at 80% -10%, rgba(217,70,239,0.06) 0%, transparent 55%)'
+              : 'radial-gradient(ellipse 80% 140% at 15% -20%, rgba(99,102,241,0.13) 0%, transparent 55%), radial-gradient(ellipse 60% 100% at 85% -10%, rgba(139,92,246,0.09) 0%, transparent 55%), radial-gradient(ellipse 40% 60% at 100% 80%, rgba(6,182,212,0.05) 0%, transparent 50%)',
           }}
         />
 
         <div className="relative mx-auto max-w-lg px-6 pb-10 pt-8">
 
-          {/* Language row with labels */}
+          {/* Language row */}
           <div className="mb-8">
-            <div className="mb-1.5 flex items-center px-0.5">
-              <span className="flex-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-dim">Von</span>
+            <div className="mb-2 flex items-center px-0.5">
+              <span className="flex-1 text-[10px] font-bold uppercase tracking-[0.15em] text-dim">From</span>
               <span className="w-9" />
-              <span className="flex-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-dim">Nach</span>
+              <span className="flex-1 text-[10px] font-bold uppercase tracking-[0.15em] text-dim">To</span>
             </div>
             <div className="flex items-center gap-2">
               <LangSelect value={sourceLang} onChange={setSourceLang} disabled={isRecording} />
               <button
                 onClick={swap}
                 disabled={isRecording}
-                title="Sprachen tauschen"
-                className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-rim text-dim transition-all hover:border-indigo-600/40 hover:bg-indigo-950/30 hover:text-indigo-300 disabled:cursor-not-allowed disabled:opacity-40"
+                title="Swap languages"
+                className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-rim text-dim transition-all duration-150 hover:border-indigo-600/50 hover:bg-indigo-950/40 hover:text-indigo-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
                   <path fillRule="evenodd" d="M13.2 2.24a.75.75 0 0 0-.04 1.06l2.1 2.2H6.75a.75.75 0 0 0 0 1.5h8.51l-2.1 2.2a.75.75 0 1 0 1.08 1.04l3.5-3.75a.75.75 0 0 0 0-1.04l-3.5-3.75a.75.75 0 0 0-1.06-.04zm-6.4 8a.75.75 0 0 0-1.06.04l-3.5 3.75a.75.75 0 0 0 0 1.04l3.5 3.75a.75.75 0 1 0 1.1-1.04l-2.1-2.2h8.51a.75.75 0 0 0 0-1.5H4.74l2.1-2.2a.75.75 0 0 0-.04-1.06z" clipRule="evenodd" />
@@ -70,7 +70,7 @@ export function TranslationApp() {
               <button
                 onClick={isRecording ? stop : start}
                 disabled={busy}
-                aria-label={isRecording ? 'Aufnahme stoppen' : 'Aufnahme starten'}
+                aria-label={isRecording ? 'Stop recording' : 'Start recording'}
                 className={[
                   'relative flex h-16 w-16 cursor-pointer items-center justify-center rounded-full',
                   'transition-all duration-200 active:scale-95',
@@ -83,8 +83,8 @@ export function TranslationApp() {
                     ? 'linear-gradient(135deg,#ef4444,#b91c1c)'
                     : 'linear-gradient(135deg,#6366f1,#7c3aed)',
                   boxShadow: isRecording
-                    ? '0 0 0 1px rgba(239,68,68,.35),0 6px 24px rgba(239,68,68,.3)'
-                    : '0 0 0 1px rgba(99,102,241,.35),0 6px 24px rgba(99,102,241,.3)',
+                    ? '0 0 0 1px rgba(239,68,68,.4), 0 6px 32px rgba(239,68,68,.35)'
+                    : '0 0 0 1px rgba(99,102,241,.4), 0 6px 32px rgba(99,102,241,.35)',
                 }}
               >
                 {busy ? (
@@ -104,19 +104,28 @@ export function TranslationApp() {
               </button>
             </div>
 
-            {/* Status */}
-            <div className="flex h-5 items-center gap-2">
+            {/* Status chip */}
+            <div className="flex h-6 items-center">
               {isRecording ? (
-                <>
+                <div className="flex items-center gap-2 rounded-full border border-red-800/40 bg-red-950/30 px-3 py-1">
                   <AudioWave />
-                  <span className="text-xs font-semibold text-red-400">Aufnahme läuft</span>
-                </>
+                  <span className="text-xs font-semibold text-red-400">Recording</span>
+                </div>
               ) : busy ? (
-                <span className="text-xs text-muted">Verbindet…</span>
+                <div className="flex items-center gap-1.5 rounded-full border border-rim bg-surface px-3 py-1">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-yellow-400" />
+                  <span className="text-xs text-muted">Connecting…</span>
+                </div>
               ) : wsStatus === 'error' ? (
-                <span className="text-xs text-red-400">Fehler — Seite neu laden</span>
+                <div className="flex items-center gap-1.5 rounded-full border border-red-900/40 bg-red-950/20 px-3 py-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                  <span className="text-xs text-red-400">Error — reload page</span>
+                </div>
               ) : (
-                <span className="text-xs text-dim">Knopf drücken und sprechen</span>
+                <div className="flex items-center gap-1.5 rounded-full border border-rim bg-surface/60 px-3 py-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                  <span className="text-xs text-muted">Press to speak</span>
+                </div>
               )}
             </div>
           </div>
@@ -133,10 +142,10 @@ export function TranslationApp() {
         )}
 
         <div className="mb-3 flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-dim">Transkript</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-dim">Transcript</span>
           {finalCount > 0 && (
             <span className="rounded-full bg-indigo-950/60 px-2.5 py-0.5 text-[10px] font-semibold text-indigo-400 ring-1 ring-indigo-800/40">
-              {finalCount} {finalCount === 1 ? 'Satz' : 'Sätze'}
+              {finalCount} {finalCount === 1 ? 'phrase' : 'phrases'}
             </span>
           )}
         </div>
@@ -172,7 +181,7 @@ function LangSelect({ value, onChange, disabled }: {
         value={value}
         onChange={e => onChange(e.target.value)}
         disabled={disabled}
-        className="w-full cursor-pointer appearance-none rounded-xl border border-rim bg-raised py-2.5 pl-3.5 pr-8 text-sm font-semibold text-prose outline-none transition-colors hover:border-indigo-700/40 focus:border-indigo-600/50 focus:ring-1 focus:ring-indigo-600/20 disabled:cursor-default disabled:opacity-60"
+        className="w-full cursor-pointer appearance-none rounded-xl border border-rim bg-raised py-2.5 pl-3.5 pr-8 text-sm font-semibold text-prose outline-none transition-all duration-150 hover:border-indigo-700/50 hover:bg-indigo-950/20 focus:border-indigo-600/60 focus:ring-1 focus:ring-indigo-600/20 disabled:cursor-default disabled:opacity-60"
       >
         {Object.entries(SUPPORTED_LANGUAGES).map(([code, lbl]) => (
           <option key={code} value={code} className="bg-raised">{lbl}</option>
@@ -202,13 +211,12 @@ function AudioWave() {
 function EmptyState({ isRecording }: { isRecording: boolean }) {
   return (
     <div className="relative flex flex-col items-center justify-center gap-4 overflow-hidden py-16 text-center">
-      {/* Subtle orb */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-20 blur-3xl"
-        style={{ background: isRecording ? '#ef4444' : '#6366f1' }}
-      />
-      <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-rim bg-surface text-dim shadow-[0_0_24px_rgba(99,102,241,0.08)]">
+      {/* Multi-color ambient orb */}
+      <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className="h-48 w-48 rounded-full opacity-[0.15] blur-3xl"
+          style={{ background: isRecording ? '#ef4444' : 'conic-gradient(from 180deg, #6366f1, #7c3aed, #06b6d4, #6366f1)' }} />
+      </div>
+      <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-rim bg-surface text-dim shadow-[0_0_24px_rgba(99,102,241,0.1)]">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
           <rect x="9" y="2" width="6" height="13" rx="3" />
           <path d="M5 10a7 7 0 0 0 14 0" />
@@ -218,11 +226,9 @@ function EmptyState({ isRecording }: { isRecording: boolean }) {
       </div>
       <div className="relative">
         <p className="text-sm font-medium text-muted">
-          {isRecording ? 'Warte auf Sprache…' : 'Übersetzungen erscheinen hier'}
+          {isRecording ? 'Listening…' : 'Translations appear here'}
         </p>
-        {!isRecording && (
-          <p className="mt-1 text-xs text-dim">Starte die Aufnahme oben</p>
-        )}
+        {!isRecording && <p className="mt-1 text-xs text-dim">Start recording above</p>}
       </div>
     </div>
   );
@@ -247,11 +253,11 @@ function TranscriptCard({ line, isLatest, sourceLang, targetLang }: {
 
   if (!line.isFinal) {
     return (
-      <div className="motion-safe:animate-slide-in rounded-xl border border-rim/30 bg-surface/40 px-4 py-3.5 opacity-60">
+      <div className="motion-safe:animate-slide-in rounded-xl border border-rim/30 bg-surface/40 px-4 py-3.5 opacity-70">
         <p className="mb-1.5 text-xs leading-relaxed text-dim">{line.original}</p>
         <div className="flex items-center gap-1.5">
-          <span className="h-1 w-1 animate-pulse rounded-full bg-indigo-500" />
-          <p className="text-xs italic text-dim/60">wird transkribiert…</p>
+          <span className="h-1 w-1 animate-pulse rounded-full bg-indigo-400" />
+          <p className="text-xs italic text-dim/60">transcribing…</p>
         </div>
       </div>
     );
@@ -260,38 +266,54 @@ function TranscriptCard({ line, isLatest, sourceLang, targetLang }: {
   return (
     <div
       className={[
-        'motion-safe:animate-slide-in group rounded-xl border px-4 py-4 transition-colors duration-150',
+        'motion-safe:animate-slide-in group relative overflow-hidden rounded-xl border px-4 py-4 transition-all duration-200',
         isLatest
-          ? 'border-indigo-600/25 bg-indigo-950/20 shadow-[0_0_28px_rgba(99,102,241,0.07)]'
-          : 'border-rim/50 bg-raised hover:border-rim',
+          ? 'border-indigo-600/20 bg-indigo-950/20 shadow-[0_0_32px_rgba(99,102,241,0.08)]'
+          : 'border-rim/50 bg-raised hover:border-indigo-700/30 hover:bg-indigo-950/10',
       ].join(' ')}
     >
-      {/* Original */}
-      <p className="mb-3 text-xs leading-relaxed text-muted">{line.original}</p>
+      {/* Subtle left accent bar */}
+      <div
+        className="absolute left-0 top-3 bottom-3 w-[2px] rounded-full"
+        style={{ background: isLatest ? 'linear-gradient(180deg,#6366f1,#7c3aed)' : 'transparent' }}
+      />
 
-      {/* Translation — prominent */}
-      <p className="text-[15px] font-semibold leading-relaxed text-prose">
+      {/* Original text */}
+      <p className="mb-3 pl-1 text-xs leading-relaxed text-muted">{line.original}</p>
+
+      {/* Translation — gradient text for premium feel */}
+      <p
+        className="pl-1 text-[15px] font-semibold leading-relaxed"
+        style={{
+          background: 'linear-gradient(135deg, #e0deff 0%, #c4b5fd 60%, #a5f3fc 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+        }}
+      >
         {line.translated || line.original}
       </p>
 
       {/* Footer */}
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-3 flex items-center justify-between pl-1">
         <div className="flex items-center gap-1.5">
-          <span className="rounded-md bg-indigo-950/60 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-400 ring-1 ring-inset ring-indigo-800/40">
+          {/* Source badge — indigo */}
+          <span className="rounded-md bg-indigo-950/70 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-400 ring-1 ring-inset ring-indigo-800/40">
             {srcLabel}
           </span>
           <svg viewBox="0 0 16 16" fill="currentColor" className="h-2.5 w-2.5 text-dim" aria-hidden>
             <path fillRule="evenodd" d="M2 8a.75.75 0 0 1 .75-.75h8.69L9.22 5.03a.75.75 0 0 1 1.06-1.06l3.5 3.5a.75.75 0 0 1 0 1.06l-3.5 3.5a.75.75 0 1 1-1.06-1.06l2.22-2.22H2.75A.75.75 0 0 1 2 8z" clipRule="evenodd" />
           </svg>
-          <span className="rounded-md bg-violet-950/60 px-1.5 py-0.5 text-[10px] font-semibold text-violet-400 ring-1 ring-inset ring-violet-800/40">
+          {/* Target badge — cyan */}
+          <span className="rounded-md bg-cyan-950/50 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-400 ring-1 ring-inset ring-cyan-800/40">
             {tgtLabel}
           </span>
         </div>
         <button
           onClick={copy}
-          className="flex cursor-pointer items-center gap-1 rounded px-2 py-0.5 text-[11px] text-dim opacity-0 transition-all group-hover:opacity-100 hover:bg-white/5 hover:text-muted"
+          className="flex cursor-pointer items-center gap-1 rounded px-2 py-0.5 text-[11px] text-dim opacity-0 transition-all duration-150 group-hover:opacity-100 hover:bg-white/5 hover:text-muted"
         >
-          {copied ? <span className="text-emerald-400">✓ Kopiert</span> : 'Kopieren'}
+          {copied ? <span className="text-emerald-400">✓ Copied</span> : 'Copy'}
         </button>
       </div>
     </div>

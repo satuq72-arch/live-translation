@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const links = [
-  { href: '/dashboard/translate', label: 'Übersetzen' },
-  { href: '/dashboard/billing',   label: 'Abrechnung' },
+  { href: '/dashboard/translate', label: 'Translate' },
+  { href: '/dashboard/billing',   label: 'Billing' },
 ];
 
 export function NavLinks() {
@@ -18,8 +18,10 @@ export function NavLinks() {
             key={href}
             href={href}
             className={[
-              'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-              active ? 'bg-indigo-600/20 text-indigo-300' : 'text-muted hover:bg-white/5 hover:text-prose',
+              'rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150',
+              active
+                ? 'bg-indigo-600/20 text-indigo-300'
+                : 'text-muted hover:bg-white/5 hover:text-prose',
             ].join(' ')}
           >
             {label}
