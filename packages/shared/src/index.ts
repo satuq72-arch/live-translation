@@ -48,6 +48,17 @@ export const SUPPORTED_LANGUAGES = {
   pt: 'Portugiesisch',
   nl: 'Niederländisch',
   pl: 'Polnisch',
+  ru: 'Russisch',
+  ja: 'Japanisch',
+  ko: 'Koreanisch',
+  tr: 'Türkisch',
+  uk: 'Ukrainisch',
+  sv: 'Schwedisch',
+  da: 'Dänisch',
+  no: 'Norwegisch',
+  cs: 'Tschechisch',
+  hu: 'Ungarisch',
+  ro: 'Rumänisch',
 } as const;
 
 export type LangCode = keyof typeof SUPPORTED_LANGUAGES;
