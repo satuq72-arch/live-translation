@@ -163,10 +163,10 @@ function BillingContent() {
             <div className="flex items-baseline gap-1">
               <span className="text-2xl font-bold tracking-tight text-prose">
                 {status?.isSubscribed && status.planType === 'monthly-flat'
-                  ? '€9'
+                  ? '€39'
                   : status?.isSubscribed
                   ? `€${(status.estimatedCost ?? 0).toFixed(2)}`
-                  : '€9'}
+                  : '€39'}
               </span>
               {(!status?.isSubscribed || status.planType === 'monthly-flat') && (
                 <span className="text-sm text-muted">/ month</span>
@@ -289,7 +289,7 @@ function UpgradeOptions({ working, onUpgradeMonthly, onUpgradeUsage }: {
           boxShadow: '0 4px 20px rgba(99,102,241,.35)',
         }}
       >
-        {working ? 'Redirecting…' : 'Monthly plan — €9 / month'}
+        {working ? 'Redirecting…' : 'Monthly plan — €39 / month'}
       </button>
 
       {/* Usage-based */}

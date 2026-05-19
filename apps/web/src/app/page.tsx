@@ -252,7 +252,7 @@ export default async function RootPage() {
                 <span className="rounded-full bg-indigo-900/60 px-2 py-0.5 text-[10px] font-semibold text-indigo-300 ring-1 ring-indigo-800/40">Best value</span>
               </div>
               <div className="mb-1 flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-prose">€9</span>
+                <span className="text-4xl font-bold text-prose">€39</span>
                 <span className="text-sm text-muted">/ month</span>
               </div>
               <p className="mb-5 text-[11px] text-dim">Unlimited minutes included</p>
@@ -304,7 +304,7 @@ export default async function RootPage() {
             </div>
 
           </div>
-          <p className="mt-4 text-center text-xs text-dim">Monthly plan pays off after ~180 minutes/month compared to pay-as-you-go.</p>
+          <p className="mt-4 text-center text-xs text-dim">Monthly plan pays off after ~780 minutes/month compared to pay-as-you-go.</p>
         </div>
       </section>
 
