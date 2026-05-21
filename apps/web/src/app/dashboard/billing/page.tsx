@@ -163,10 +163,10 @@ function BillingContent() {
             <div className="flex items-baseline gap-1">
               <span className="text-2xl font-bold tracking-tight text-prose">
                 {status?.isSubscribed && status.planType === 'monthly-flat'
-                  ? '€39'
+                  ? '€19'
                   : status?.isSubscribed
                   ? `€${(status.estimatedCost ?? 0).toFixed(2)}`
-                  : '€39'}
+                  : '€19'}
               </span>
               {(!status?.isSubscribed || status.planType === 'monthly-flat') && (
                 <span className="text-sm text-muted">/ month</span>
@@ -289,7 +289,7 @@ function UpgradeOptions({ working, onUpgradeMonthly, onUpgradeUsage }: {
           boxShadow: '0 4px 20px rgba(99,102,241,.35)',
         }}
       >
-        {working ? 'Redirecting…' : 'Monthly plan — €39 / month'}
+        {working ? 'Redirecting…' : 'Monthly plan — €19 / month'}
       </button>
 
       {/* Usage-based */}
@@ -302,7 +302,7 @@ function UpgradeOptions({ working, onUpgradeMonthly, onUpgradeUsage }: {
       </button>
 
       <p className="text-center text-[11px] text-dim">
-        Monthly plan saves money after ~180 min/month
+        Monthly plan includes 800 min, then €0.03 / min
       </p>
     </div>
   );
