@@ -280,17 +280,38 @@ function UpgradeOptions({ working, onUpgradeMonthly, onUpgradeUsage }: {
   return (
     <div className="flex flex-col gap-2.5">
       {/* Monthly flat */}
-      <button
-        onClick={onUpgradeMonthly}
-        disabled={working}
-        className="cursor-pointer rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-        style={{
-          background: 'linear-gradient(135deg,#6366f1,#7c3aed)',
-          boxShadow: '0 4px 20px rgba(99,102,241,.35)',
-        }}
+      <div
+        className="overflow-hidden rounded-xl"
+        style={{ background: 'linear-gradient(135deg,#6366f1,#7c3aed)', boxShadow: '0 4px 20px rgba(99,102,241,.35)' }}
       >
-        {working ? 'Redirecting…' : 'Monthly plan — €19 / month'}
-      </button>
+        <div className="px-5 pt-4 pb-3">
+          <div className="mb-3 flex items-baseline gap-1.5">
+            <span className="text-2xl font-bold text-white">€19</span>
+            <span className="text-sm text-white/70">/ month</span>
+          </div>
+          <ul className="mb-4 space-y-1.5 text-sm text-white/90">
+            <li className="flex items-center gap-2">
+              <svg viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-white/70" aria-hidden><path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207z" clipRule="evenodd" /></svg>
+              800 minutes included
+            </li>
+            <li className="flex items-center gap-2">
+              <svg viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-white/70" aria-hidden><path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207z" clipRule="evenodd" /></svg>
+              Then €0.03 / min
+            </li>
+            <li className="flex items-center gap-2">
+              <svg viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-white/70" aria-hidden><path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207z" clipRule="evenodd" /></svg>
+              Cancel anytime
+            </li>
+          </ul>
+        </div>
+        <button
+          onClick={onUpgradeMonthly}
+          disabled={working}
+          className="w-full cursor-pointer border-t border-white/20 bg-white/10 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/20 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {working ? 'Redirecting…' : 'Get started →'}
+        </button>
+      </div>
 
       {/* Usage-based */}
       <button
@@ -300,10 +321,6 @@ function UpgradeOptions({ working, onUpgradeMonthly, onUpgradeUsage }: {
       >
         {working ? 'Redirecting…' : 'Pay as you go — €0.05 / min'}
       </button>
-
-      <p className="text-center text-[11px] text-dim">
-        Monthly plan includes 800 min, then €0.03 / min
-      </p>
     </div>
   );
 }
