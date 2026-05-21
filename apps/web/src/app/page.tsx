@@ -252,12 +252,12 @@ export default async function RootPage() {
                 <span className="rounded-full bg-indigo-900/60 px-2 py-0.5 text-[10px] font-semibold text-indigo-300 ring-1 ring-indigo-800/40">Best value</span>
               </div>
               <div className="mb-1 flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-prose">€39</span>
+                <span className="text-4xl font-bold text-prose">€19</span>
                 <span className="text-sm text-muted">/ month</span>
               </div>
-              <p className="mb-5 text-[11px] text-dim">Unlimited minutes included</p>
+              <p className="mb-5 text-[11px] text-dim">800 min included · then €0.03 / min</p>
               <ul className="mb-7 space-y-3 text-sm text-muted">
-                {['Unlimited minutes','19 languages','Real-time translation','Copy transcripts','Priority support'].map(f => (
+                {['800 minutes included','Then €0.03 / min','19 languages','Real-time translation','Cancel anytime'].map(f => (
                   <li key={f} className="flex items-center gap-2.5">
                     <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4 shrink-0 text-indigo-400" aria-hidden>
                       <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207z" clipRule="evenodd" />
@@ -304,7 +304,7 @@ export default async function RootPage() {
             </div>
 
           </div>
-          <p className="mt-4 text-center text-xs text-dim">Monthly plan pays off after ~780 minutes/month compared to pay-as-you-go.</p>
+          <p className="mt-4 text-center text-xs text-dim">Monthly plan pays off after ~465 minutes/month compared to pay-as-you-go.</p>
         </div>
       </section>
 
@@ -331,7 +331,7 @@ export default async function RootPage() {
       {/* ── Footer ── */}
       <footer className="border-t border-rim px-6 py-8">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <span className="text-xs text-dim">© 2025 LiveTranslate</span>
+          <span className="text-xs text-dim">© 2026 LiveTranslate</span>
           <div className="flex gap-4 text-xs text-dim">
             {userId ? (
               <Link href="/dashboard/translate" className="transition-colors hover:text-muted">Open app</Link>
